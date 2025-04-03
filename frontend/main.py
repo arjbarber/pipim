@@ -44,23 +44,37 @@ class PipimApp(tk.Tk):
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Pack canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        
 
         # Populate the scrollable frame with package information
-        for pkg in requests.get("http://127.0.0.1:5000/get_modules").json():
+        r = requests.get("http://127.0.0.1:5000/get_modules")
+        if r.status_code == 200:
+            data = r.json()
+        else:
+            pkg_frame = ttk.Frame(scrollable_frame)
+            pkg_frame.pack(fill="x", pady=5, padx=20)
+            pkg_label = tk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
+            pkg_label.pack(side="left", padx=100)
+            return
+        for pkg in data:
             pkg_name = pkg["name"]
             pkg_version = pkg["version"]
-            pkg = f"{pkg_name}\t{pkg_version}"
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
 
-            pkg_label = tk.Label(pkg_frame, text=pkg, font=("Arial", 12))
-            pkg_label.pack(side="left")
 
+
+            pkg_label = tk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
+            pkg_label.pack(side="left")            
+            pkg_version_label = tk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
+            pkg_version_label.pack(side="left", padx=100)
+            
             remove_button = ttk.Button(pkg_frame, text="Remove")
             remove_button.pack(side="right")
+
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
 
     def create_install_package_ui(self, parent):
