@@ -17,12 +17,15 @@ class PipimApp(tk.Tk):
 
         self.view_packages_frame = ttk.Frame(notebook)
         self.install_package_frame = ttk.Frame(notebook)
+        self.search_package_frame = ttk.Frame(notebook)
 
         notebook.add(self.view_packages_frame, text="View Installed Packages")
         notebook.add(self.install_package_frame, text="Install Package")
+        notebook.add(self.search_package_frame, text="Search For Packages")
 
         self.create_view_packages_ui(self.view_packages_frame)
         self.create_install_package_ui(self.install_package_frame)
+        self.create_search_package_ui(self.search_package_frame)
 
         install_python_button = ttk.Button(
             self,
@@ -95,6 +98,20 @@ class PipimApp(tk.Tk):
 
         install_button = ttk.Button(parent, text="Install")
         install_button.pack(pady=10)
+
+    def create_search_package_ui(self, parent):
+        title_label = ttk.Label(parent, text="Search For Package", font=("Arial", 16))
+        title_label.pack(pady=10)
+
+        package_label = ttk.Label(parent, text="Package Name:")
+        package_label.pack(pady=5)
+
+        package_entry = ttk.Entry(parent)
+        package_entry.pack(pady=5)
+        
+        install_button = ttk.Button(parent, text="Install")
+        install_button.pack(pady=10)
+
 
     def open_install_python_popup(self):
         popup = tk.Toplevel(self)
