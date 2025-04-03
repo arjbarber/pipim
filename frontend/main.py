@@ -8,6 +8,10 @@ class PipimApp(tk.Tk):
         self.title("pipim")
         self.geometry("600x400")
 
+        # Apply a consistent theme
+        style = ttk.Style(self)
+        style.theme_use("clam")  # Use a cross-platform theme like "clam"
+
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True)
 
@@ -28,7 +32,7 @@ class PipimApp(tk.Tk):
         install_python_button.pack(pady=10)
 
     def create_view_packages_ui(self, parent):
-        title_label = tk.Label(parent, text="View Installed Packages", font=("Arial", 16))
+        title_label = ttk.Label(parent, text="View Installed Packages", font=("Arial", 16))
         title_label.pack(pady=10)
 
         # Create a canvas and a scrollbar
@@ -44,7 +48,10 @@ class PipimApp(tk.Tk):
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        
+        # Enable scrolling with the trackpad or mouse wheel
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # For Linux
+        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # For Linux
 
         # Populate the scrollable frame with package information
         r = requests.get("http://127.0.0.1:5000/get_modules")
@@ -53,35 +60,34 @@ class PipimApp(tk.Tk):
         else:
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
-            pkg_label = tk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
+            pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
             pkg_label.pack(side="left", padx=100)
             return
+
         for pkg in data:
             pkg_name = pkg["name"]
             pkg_version = pkg["version"]
-            pkg_frame = ttk.Frame(scrollable_frame)
+            pkg_frame = ttk.Frame(scrollable_frame, width=canvas.winfo_width())
             pkg_frame.pack(fill="x", pady=5, padx=20)
 
+            pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
+            pkg_label.pack(side="left")
 
+            pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
+            pkg_version_label.pack(side="left", padx=20, anchor="center")
 
-            pkg_label = tk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
-            pkg_label.pack(side="left")            
-            pkg_version_label = tk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
-            pkg_version_label.pack(side="left", padx=100)
-            
             remove_button = ttk.Button(pkg_frame, text="Remove")
             remove_button.pack(side="right")
 
-        # Pack canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
+        # Adjust canvas and scrollbar spacing
+        canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
+        scrollbar.pack(side="right", fill="y", padx=(0, 10))
 
     def create_install_package_ui(self, parent):
-        title_label = tk.Label(parent, text="Install Package", font=("Arial", 16))
+        title_label = ttk.Label(parent, text="Install Package", font=("Arial", 16))
         title_label.pack(pady=10)
 
-        package_label = tk.Label(parent, text="Package Name:")
+        package_label = ttk.Label(parent, text="Package Name:")
         package_label.pack(pady=5)
 
         package_entry = ttk.Entry(parent)
@@ -95,7 +101,7 @@ class PipimApp(tk.Tk):
         popup.title("Install Python")
         popup.geometry("300x150")
 
-        label = tk.Label(popup, text="Install Python", font=("Arial", 14))
+        label = ttk.Label(popup, text="Install Python", font=("Arial", 14))
         label.pack(pady=20)
 
         close_button = ttk.Button(popup, text="Close", command=popup.destroy)
