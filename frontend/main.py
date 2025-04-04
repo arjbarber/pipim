@@ -76,7 +76,7 @@ class PipimApp(tk.Tk):
             pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
             pkg_version_label.pack(side="left", padx=20, anchor="center")
 
-            remove_button = ttk.Button(pkg_frame, text="Remove")
+            remove_button = ttk.Button(pkg_frame, text="Remove",command=lambda name=pkg_name: requests.post("http://127.0.0.1:5000/uninstall_package", json={"package_name": name}))
             remove_button.pack(side="right")
 
         # Adjust canvas and scrollbar spacing
