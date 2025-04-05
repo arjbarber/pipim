@@ -66,7 +66,6 @@ class PipimApp(tk.Tk):
         r = requests.get("http://127.0.0.1:5000/get_modules")
         if r.status_code == 200:
             data = r.json()
-            print(data)
         else:
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
