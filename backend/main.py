@@ -39,6 +39,7 @@ def uninstall_package():
         return jsonify({"error": "Package name is required"}), 400
     
     result = subprocess.run(['pip', 'uninstall', '-y', package_name], capture_output=True, text=True)
+    print(result)
     if result.returncode != 0:
         return jsonify({"error": result.stderr}), 500
     
