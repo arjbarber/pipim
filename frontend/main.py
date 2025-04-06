@@ -111,8 +111,50 @@ class PipimApp(tk.Tk):
         package_entry = ttk.Entry(parent)
         package_entry.pack(pady=5)
 
+        # Create a frame to display the log dynamically
+        log_frame = ttk.Frame(parent)
+        log_frame.pack(fill="both", expand=True, pady=10)
+
+        # Create a canvas and a scrollbar for scrolling
+        canvas = tk.Canvas(log_frame)
+        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=canvas.yview)
+        scrollable_log_frame = ttk.Frame(canvas)
+
+        # Configure the canvas to update the scroll region
+        scrollable_log_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=scrollable_log_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Pack the canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Function to dynamically update the log
+        def update_log(message: str, success: bool):
+            log_label = ttk.Label(
+                scrollable_log_frame,
+                text=message,
+                font=("Arial", 12),
+                foreground="green" if success else "red"
+            )
+            log_label.pack(anchor="w", pady=2)
+
+        # Function to handle package installation
+        def install_package(name: str) -> None:
+            data = {"package_name": name}
+            r = requests.post('http://127.0.0.1:5000/install_package', json=data)
+            if r.status_code == 200:
+                response_data = r.json()
+                update_log(response_data["message"], success=True)
+            else:
+                response_data = r.json()
+                update_log(response_data.get("error", "An error occurred"), success=False)
+
         # Button to trigger package installation
-        install_button = ttk.Button(parent, text="Install")
+        install_button = ttk.Button(parent, text="Install", command=lambda: install_package(package_entry.get()))
         install_button.pack(pady=10)
 
     # Create the UI for the "Search For Package" tab
