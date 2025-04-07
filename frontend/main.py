@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import requests
 
+BACKEND_URL = 'http://127.0.0.1:5000/'
+
 # Main application class
 class PipimApp(tk.Tk):
     def __init__(self):
@@ -63,38 +65,52 @@ class PipimApp(tk.Tk):
         canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # For Linux
         canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # For Linux
 
-        # Fetch installed packages from the server
-        r = requests.get("http://127.0.0.1:5000/get_modules")
-        if r.status_code == 200:
-            data = r.json()  # Parse the JSON response
-        else:
-            # Display a message if no modules are installed
-            pkg_frame = ttk.Frame(scrollable_frame)
-            pkg_frame.pack(fill="x", pady=5, padx=20)
-            pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
-            pkg_label.pack(side="left", padx=100)
-            return
+        def refresh_packages():
+            # Clear the current content in the scrollable frame
+            for widget in scrollable_frame.winfo_children():
+                widget.destroy()
 
-        # Create a frame for each package
-        for pkg in data:
-            pkg_name = pkg["name"]
-            pkg_version = pkg["version"]
-            pkg_frame = ttk.Frame(scrollable_frame, width=canvas.winfo_width())
-            pkg_frame.pack(fill="x", pady=5, padx=20)
+            # Fetch installed packages from the server
+            r = requests.get(BACKEND_URL + "get_modules")
+            if r.status_code == 200:
+                data = r.json()  # Parse the JSON response
+            else:
+                # Display a message if no modules are installed
+                pkg_frame = ttk.Frame(scrollable_frame)
+                pkg_frame.pack(fill="x", pady=5, padx=20)
+                pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
+                pkg_label.pack(side="left", padx=100)
+                return
 
-            # Display package name and version
-            pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
-            pkg_label.pack(side="left")
-            pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
-            pkg_version_label.pack(side="left", padx=40, anchor="center")
+            # Create a frame for each package
+            for pkg in data:
+                pkg_name = pkg["name"]
+                pkg_version = pkg["version"]
+                pkg_frame = ttk.Frame(scrollable_frame, width=canvas.winfo_width())
+                pkg_frame.pack(fill="x", pady=5, padx=20)
 
-            # Add a "Remove" button for each package
-            remove_button = ttk.Button(
-                pkg_frame,
-                text="Remove",
-                command=lambda name=pkg_name: requests.post("http://127.0.0.1:5000/uninstall_package", json={"package_name": name})
-            )
-            remove_button.pack(side="right")
+                # Display package name and version
+                pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
+                pkg_label.pack(side="left")
+                pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
+                pkg_version_label.pack(side="left", padx=40, anchor="center")
+
+                # Add a "Remove" button for each package
+                remove_button = ttk.Button(
+                    pkg_frame,
+                    text="Remove",
+                    command=lambda name=pkg_name: remove_package(name)
+                )
+                remove_button.pack(side="right")
+
+        def remove_package(name):
+            # Send a request to remove the package
+            r = requests.post(BACKEND_URL + "uninstall_package", json={"package_name": name})
+            if r.status_code == 200:
+                refresh_packages()  # Refresh the package list after removal
+
+        # Initial load of packages
+        refresh_packages()
 
         # Adjust canvas and scrollbar spacing
         canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
@@ -145,7 +161,7 @@ class PipimApp(tk.Tk):
         # Function to handle package installation
         def install_package(name: str) -> None:
             data = {"package_name": name}
-            r = requests.post('http://127.0.0.1:5000/install_package', json=data)
+            r = requests.post(BACKEND_URL + 'install_package', json=data)
             if r.status_code == 200:
                 response_data = r.json()
                 update_log(response_data["message"], success=True)
