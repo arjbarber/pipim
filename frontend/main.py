@@ -119,7 +119,7 @@ class PipimApp(tk.Tk):
 
                 # Remove button on the far right
                 remove_button = ttk.Button(pkg_frame, text="Remove",
-                                        command=lambda name=pkg_name: remove_package(name))
+                                        command=lambda name=pkg_name, version=pkg_version: remove_button_popup(name, version))
                 remove_button.grid(row=0, column=3, sticky="e", padx=5)
 
                 # Let the name and version columns expand to use available space
@@ -131,10 +131,28 @@ class PipimApp(tk.Tk):
             if r.status_code != 200:
                 raise Exception("Failed to fetch documentation")
 
-        def remove_package(name):
+        def remove_package(name, popup):
             r = requests.post(BACKEND_URL + "uninstall_package", json={"package_name": name})
             if r.status_code == 200:
                 refresh_packages()  # Refresh the package list after removal
+
+            popup.destroy()
+
+        def remove_button_popup(package_name, package_version):
+            popup = tk.Toplevel(self)
+            popup.title("Remove Package")
+            popup.geometry("300x150")
+
+            # Display popup content
+            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14))
+            label.pack(pady=20)
+
+            close_button = ttk.Button(popup, text="Remove", command=lambda name=package_name: remove_package(name, popup))
+            close_button.pack(pady=10)
+
+            # Close button for the popup
+            close_button = ttk.Button(popup, text="Cancel", command=popup.destroy)
+            close_button.pack(pady=10)
 
         # Initial load of packages
         refresh_packages()
