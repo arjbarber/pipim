@@ -95,6 +95,15 @@ class PipimApp(tk.Tk):
                 pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
                 pkg_version_label.pack(side="left", padx=40, anchor="center")
 
+                # Add a documentation button for each package
+
+                doc_button = ttk.Button(
+                    pkg_frame,
+                    text="Documentation",
+                    command=lambda name=pkg_name: open_documentation(name)
+                )
+                doc_button.pack(side="right", padx=10)
+
                 # Add a "Remove" button for each package
                 remove_button = ttk.Button(
                     pkg_frame,
@@ -102,6 +111,13 @@ class PipimApp(tk.Tk):
                     command=lambda name=pkg_name: remove_package(name)
                 )
                 remove_button.pack(side="right")
+
+        def open_documentation(name):
+            r = requests.post(BACKEND_URL + "package_documentation", json={"package_name": name})
+            if r.status_code == 200:
+                return
+            else:
+                raise Exception("Failed to fetch documentation")
 
         def remove_package(name):
             # Send a request to remove the package
@@ -182,7 +198,7 @@ class PipimApp(tk.Tk):
                 return
 
             try:
-                response = requests.get("http://localhost:5000/search_for_packages", params={"q": query})
+                response = requests.get(BACKEND_URL + "search_for_packages", params={"q": query})
                 response.raise_for_status()
                 packages = response.json()
 

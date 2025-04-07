@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 import subprocess
 from bs4 import BeautifulSoup
 import requests
+import webbrowser
 
 app = Flask(__name__)
 
@@ -73,7 +74,17 @@ def search_for_packages():
     print(listOfPackages)
     
     return (jsonify(results))
-    ...
+
+@app.route('/package_documentation', methods=['POST'])
+def package_documentation():
+    package_name = request.json.get('package_name')
+    if not package_name:
+        return jsonify({"error": "Package name is required"}), 400
+
+    url = f"https://pypi.org/project/{package_name}/"
+    webbrowser.open(url)
+
+    return jsonify({"message": f"Opening documentation for {package_name}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
