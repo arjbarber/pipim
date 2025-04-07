@@ -47,90 +47,97 @@ class PipimApp(tk.Tk):
         title_label = ttk.Label(parent, text="View Installed Packages", font=("Arial", 16))
         title_label.pack(pady=10)
 
-        # Create a canvas and a scrollbar for scrolling
-        canvas = tk.Canvas(parent)
-        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        # Create a container for the canvas and scrollbar
+        container = ttk.Frame(parent)
+        container.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Configure the canvas to update the scroll region
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        # Get the background color from the top-level widget
+        default_bg = parent.winfo_toplevel().cget("bg")
+        canvas = tk.Canvas(container, borderwidth=0, bg=default_bg)
+        canvas.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Enable scrolling with the mouse wheel
+        # Create a scrollable frame inside the canvas
+        scrollable_frame = ttk.Frame(canvas)
+        window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        # Update scroll region when the frame's size changes
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        scrollable_frame.bind("<Configure>", on_frame_configure)
+
+        # Update the frame width to match the canvas width
+        def on_canvas_configure(event):
+            canvas.itemconfig(window_id, width=event.width)
+
+        canvas.bind("<Configure>", on_canvas_configure)
+
+        # Enable mouse wheel scrolling
         canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
         canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # For Linux
         canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # For Linux
 
         def refresh_packages():
-            # Clear the current content in the scrollable frame
+            # Clear current content
             for widget in scrollable_frame.winfo_children():
                 widget.destroy()
 
-            # Fetch installed packages from the server
             r = requests.get(BACKEND_URL + "get_modules")
             if r.status_code == 200:
                 data = r.json()  # Parse the JSON response
             else:
-                # Display a message if no modules are installed
                 pkg_frame = ttk.Frame(scrollable_frame)
                 pkg_frame.pack(fill="x", pady=5, padx=20)
                 pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
                 pkg_label.pack(side="left", padx=100)
                 return
 
-            # Create a frame for each package
+            # Create a frame for each package and use grid for alignment
             for pkg in data:
                 pkg_name = pkg["name"]
                 pkg_version = pkg["version"]
-                pkg_frame = ttk.Frame(scrollable_frame, width=canvas.winfo_width())
+
+                pkg_frame = ttk.Frame(scrollable_frame)
                 pkg_frame.pack(fill="x", pady=5, padx=20)
 
-                # Display package name and version
+                # Package name
                 pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
-                pkg_label.pack(side="left")
+                pkg_label.grid(row=0, column=0, sticky="w")
+
+                # Version aligned next to the package name
                 pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
-                pkg_version_label.pack(side="left", padx=40, anchor="center")
+                pkg_version_label.grid(row=0, column=1, sticky="w", padx=20)
 
-                # Add a documentation button for each package
+                # Documentation button on the right side
+                doc_button = ttk.Button(pkg_frame, text="Documentation",
+                                        command=lambda name=pkg_name: open_documentation(name))
+                doc_button.grid(row=0, column=2, sticky="e", padx=5)
 
-                doc_button = ttk.Button(
-                    pkg_frame,
-                    text="Documentation",
-                    command=lambda name=pkg_name: open_documentation(name)
-                )
-                doc_button.pack(side="right", padx=10)
+                # Remove button on the far right
+                remove_button = ttk.Button(pkg_frame, text="Remove",
+                                        command=lambda name=pkg_name: remove_package(name))
+                remove_button.grid(row=0, column=3, sticky="e", padx=5)
 
-                # Add a "Remove" button for each package
-                remove_button = ttk.Button(
-                    pkg_frame,
-                    text="Remove",
-                    command=lambda name=pkg_name: remove_package(name)
-                )
-                remove_button.pack(side="right", padx=(0, 400))
+                # Let the name and version columns expand to use available space
+                pkg_frame.columnconfigure(0, weight=1)
+                pkg_frame.columnconfigure(1, weight=1)
 
         def open_documentation(name):
             r = requests.post(BACKEND_URL + "package_documentation", json={"package_name": name})
-            if r.status_code == 200:
-                return
-            else:
+            if r.status_code != 200:
                 raise Exception("Failed to fetch documentation")
 
         def remove_package(name):
-            # Send a request to remove the package
             r = requests.post(BACKEND_URL + "uninstall_package", json={"package_name": name})
             if r.status_code == 200:
                 refresh_packages()  # Refresh the package list after removal
 
         # Initial load of packages
         refresh_packages()
-
-        # Adjust canvas and scrollbar spacing
-        canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
-        scrollbar.pack(side="right", fill="y", padx=(0, 10))
 
     # Create the UI for the "Install Package" tab
     def create_install_package_ui(self, parent):
