@@ -159,18 +159,44 @@ class PipimApp(tk.Tk):
 
     # Create the UI for the "Search For Package" tab
     def create_search_package_ui(self, parent):
+        def search_package():
+            query = package_entry.get()
+            if not query:
+                result_label.config(text="Please enter a package name.")
+                return
+
+            try:
+                response = requests.get("http://localhost:5000/search_for_packages", params={"q": query})
+                response.raise_for_status()
+                packages = response.json()
+
+                result_text.delete("1.0", tk.END)
+                if isinstance(packages, list) and packages:
+                    for pkg in packages:
+                        result_text.insert(tk.END, f"{pkg['name']} ({pkg['version']}): {pkg['description']}\n\n")
+                else:
+                    result_text.insert(tk.END, "No packages found.")
+            except Exception as e:
+                result_label.config(text=f"Error: {str(e)}")
+
+        # UI Components
         title_label = ttk.Label(parent, text="Search For Package", font=("Arial", 16))
         title_label.pack(pady=10)
 
-        # Input field for package name
         package_label = ttk.Label(parent, text="Package Name:")
         package_label.pack(pady=5)
-        package_entry = ttk.Entry(parent)
+
+        package_entry = ttk.Entry(parent, width=40)
         package_entry.pack(pady=5)
 
-        # Button to trigger package search
-        install_button = ttk.Button(parent, text="Install")
+        install_button = ttk.Button(parent, text="Search", command=search_package)
         install_button.pack(pady=10)
+
+        result_label = ttk.Label(parent, text="", foreground="red")
+        result_label.pack()
+
+        result_text = tk.Text(parent, height=15, width=60, wrap="word")
+        result_text.pack(pady=10)
 
     # Open a popup window for installing Python
     def open_install_python_popup(self):
