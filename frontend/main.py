@@ -101,7 +101,7 @@ class PipimApp(tk.Tk):
                     text="Remove",
                     command=lambda name=pkg_name: remove_package(name)
                 )
-                remove_button.pack(side="right")
+                remove_button.pack(side="right", padx=(0, 400))
 
         def remove_package(name):
             # Send a request to remove the package
