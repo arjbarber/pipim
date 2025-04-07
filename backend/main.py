@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request
 import subprocess
+from bs4 import BeautifulSoup
+import requests
 
 app = Flask(__name__)
 
@@ -48,6 +50,29 @@ def uninstall_package():
 @app.route('/install_python', methods=['POST'])
 def install_python():
     # implement later
+    ...
+
+@app.route('/search_for_packages')
+def search_for_packages():
+    query = request.args.get('q')
+    if not query:
+        return jsonify({"error": "Missing 'q' parameter"}), 400
+
+    search_url = f"https://pypi.org/search/?q={query}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    response = requests.get(search_url, headers=headers)
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to fetch data from PyPI"}), 500
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    results = []
+    
+    print(soup)
+    listOfPackages = soup.find_all("ul", attrs={"class": "unstyled"})
+    print(listOfPackages)
+    
+    return (jsonify(results))
     ...
 
 if __name__ == '__main__':
