@@ -53,7 +53,7 @@ def install_python():
     # implement later
     ...
 
-@app.route('/search_for_packages')
+@app.route('/search_for_packages', methods=['GET'])
 def search_for_packages():
     query = request.args.get('q')
     if not query:
