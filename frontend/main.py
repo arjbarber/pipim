@@ -139,12 +139,16 @@ class PipimApp(tk.Tk):
             popup.destroy()
 
         def remove_button_popup(package_name, package_version):
+
+            default_bg = self.winfo_toplevel().cget("bg")
+
             popup = tk.Toplevel(self)
             popup.title("Remove Package")
             popup.geometry("300x150")
+            popup.configure(bg=default_bg)
 
             # Display popup content
-            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14))
+            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14), background=default_bg)
             label.pack(pady=20)
 
             close_button = ttk.Button(popup, text="Remove", command=lambda name=package_name: remove_package(name, popup))
@@ -257,9 +261,12 @@ class PipimApp(tk.Tk):
 
     # Open a popup window for installing Python
     def open_install_python_popup(self):
+
         popup = tk.Toplevel(self)
         popup.title("Install Python")
         popup.geometry("300x150")
+
+        
 
         # Display popup content
         label = ttk.Label(popup, text="Install Python", font=("Arial", 14))
