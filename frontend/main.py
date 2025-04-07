@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import requests
 
+BACKEND_URL = 'http://127.0.0.1:5000/'
+
 # Main application class
 class PipimApp(tk.Tk):
     def __init__(self):
@@ -64,7 +66,7 @@ class PipimApp(tk.Tk):
         canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # For Linux
 
         # Fetch installed packages from the server
-        r = requests.get("http://127.0.0.1:5000/get_modules")
+        r = requests.get(BACKEND_URL + "get_modules")
         if r.status_code == 200:
             data = r.json()  # Parse the JSON response
         else:
@@ -92,7 +94,7 @@ class PipimApp(tk.Tk):
             remove_button = ttk.Button(
                 pkg_frame,
                 text="Remove",
-                command=lambda name=pkg_name: requests.post("http://127.0.0.1:5000/uninstall_package", json={"package_name": name})
+                command=lambda name=pkg_name: requests.post(BACKEND_URL + "uninstall_package", json={"package_name": name})
             )
             remove_button.pack(side="right")
 
@@ -145,7 +147,7 @@ class PipimApp(tk.Tk):
         # Function to handle package installation
         def install_package(name: str) -> None:
             data = {"package_name": name}
-            r = requests.post('http://127.0.0.1:5000/install_package', json=data)
+            r = requests.post(BACKEND_URL + 'install_package', json=data)
             if r.status_code == 200:
                 response_data = r.json()
                 update_log(response_data["message"], success=True)
