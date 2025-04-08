@@ -151,7 +151,7 @@ class PipimApp(tk.Tk):
             popup.configure(bg="#f0f0f0")  
 
             # Display popup content
-            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14), background=default_bg)
+            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14), background="#f0f0f0")
             label.pack(pady=20)
 
             close_button = ttk.Button(popup, text="Remove", command=lambda name=package_name: remove_package(name, popup))
