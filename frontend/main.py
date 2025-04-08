@@ -289,7 +289,7 @@ class PipimApp(tk.Tk):
         
 
         # Display popup content
-        label = ttk.Label(popup, text="Install Python", font=("Arial", 14))
+        label = ttk.Label(popup, text="Install Python", font=("Arial", 14), background=default_bg)
         label.pack(pady=20)
 
         # Close button for the popup
