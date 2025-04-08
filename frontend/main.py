@@ -9,7 +9,7 @@ class PipimApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("pipim")  # Set the window title
-        self.geometry("600x400")  # Set the window size
+        self.geometry("600x700")  # Set the window size
         self.configure(bg='#f0f0f0')  # Set the background color
 
         # Apply a consistent theme
@@ -152,15 +152,29 @@ class PipimApp(tk.Tk):
             popup.configure(bg=default_bg)
 
             # Display popup content
-            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14), background=default_bg)
+            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 10), background=default_bg)
             label.pack(pady=20)
 
-            close_button = ttk.Button(popup, text="Remove", command=lambda name=package_name: remove_package(name, popup))
-            close_button.pack(pady=10)
+            # Create a frame to hold both buttons side by side
+            button_frame = ttk.Frame(popup)
+            button_frame.pack(pady=10)
 
-            # Close button for the popup
-            close_button = ttk.Button(popup, text="Cancel", command=popup.destroy)
-            close_button.pack(pady=10)
+            # Remove button
+            remove_button = ttk.Button(
+                button_frame,
+                text="Remove",
+                command=lambda name=package_name: remove_package(name, popup)
+            )
+            remove_button.pack(side=tk.LEFT, padx=10)
+
+            # Cancel button
+            cancel_button = ttk.Button(
+                button_frame,
+                text="Cancel",
+                command=popup.destroy
+            )
+            cancel_button.pack(side=tk.LEFT, padx=10)
+
 
         # Initial load of packages
         refresh_packages()
