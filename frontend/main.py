@@ -148,7 +148,7 @@ class PipimApp(tk.Tk):
             popup = tk.Toplevel(self)
             popup.title("Remove Package")
             popup.geometry("300x150")
-            popup.configure(bg=default_bg)
+            popup.configure(bg="#f0f0f0")  
 
             # Display popup content
             label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 14), background=default_bg)
