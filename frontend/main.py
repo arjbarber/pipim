@@ -110,7 +110,7 @@ class PipimApp(tk.Tk):
 
                 # Version aligned next to the package name
                 pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
-                pkg_version_label.grid(row=0, column=1, sticky="w", padx=20)
+                pkg_version_label.grid(row=0, column=1, sticky="e", padx=20)
 
                 # Documentation button on the right side
                 doc_button = ttk.Button(pkg_frame, text="Documentation",
@@ -125,6 +125,9 @@ class PipimApp(tk.Tk):
                 # Let the name and version columns expand to use available space
                 pkg_frame.columnconfigure(0, weight=1)
                 pkg_frame.columnconfigure(1, weight=1)
+
+        # Bind the refresh_packages function to the tab being selected
+        parent.bind("<Visibility>", lambda event: refresh_packages())
 
         def open_documentation(name):
             r = requests.post(BACKEND_URL + "package_documentation", json={"package_name": name})
