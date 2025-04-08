@@ -9,7 +9,7 @@ class PipimApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("pipim")  # Set the window title
-        self.geometry("600x400")  # Set the window size
+        self.geometry("600x700")  # Set the window size
         self.configure(bg='#f0f0f0')  # Set the background color
 
         # Apply a consistent theme
@@ -275,7 +275,7 @@ class PipimApp(tk.Tk):
         
 
         # Display popup content
-        label = ttk.Label(popup, text="Install Python", font=("Arial", 14))
+        label = ttk.Label(popup, text="Install Python", font=("Arial", 14), background=default_bg)
         label.pack(pady=20)
 
         # Close button for the popup
