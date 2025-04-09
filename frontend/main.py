@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import requests
+import threading
 
 BACKEND_URL = 'http://127.0.0.1:5000/'
 
@@ -97,8 +98,7 @@ class PipimApp(tk.Tk):
                 pkg_label.pack(side="left", padx=100)
                 return
 
-            # Create a frame for each package and use grid for alignment
-            for pkg in data:
+            def display_row(pkg):
                 pkg_name = pkg["name"]
                 pkg_version = pkg["version"]
                 r = requests.post(BACKEND_URL + "get_module_info", json={"package_name": pkg_name})
@@ -135,9 +135,17 @@ class PipimApp(tk.Tk):
                 summary = ttk.Label(pkg_frame, text=pkg["summary"], font=("Arial", 10), wraplength=400)
                 summary.grid(row=2, column=0, sticky="w", padx=20)
 
+
                 # Let the name and version columns expand to use available space
                 pkg_frame.columnconfigure(0, weight=1)
                 pkg_frame.columnconfigure(1, weight=1)
+
+
+            # Create a frame for each package and use grid for alignment
+            array = []
+            for pkg in data:
+                array.append(threading.Thread(target=display_row(pkg),args=(pkg,)))
+                array[-1].start()
 
         # Bind the refresh_packages function to the tab being selected
         parent.bind("<Visibility>", lambda event: refresh_packages())
