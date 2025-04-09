@@ -101,6 +101,12 @@ class PipimApp(tk.Tk):
             for pkg in data:
                 pkg_name = pkg["name"]
                 pkg_version = pkg["version"]
+                r = requests.post(BACKEND_URL + "get_module_info", json={"package_name": pkg_name})
+                if r.status_code != 200:
+                    raise Exception("Failed to fetch package info")
+                pkg_info = r.json()
+                pkg["summary"] = pkg_info["summary"]
+                pkg["author"] = pkg_info["author"]
 
                 pkg_frame = ttk.Frame(scrollable_frame)
                 pkg_frame.pack(fill="x", pady=5, padx=20)
@@ -122,6 +128,12 @@ class PipimApp(tk.Tk):
                 remove_button = ttk.Button(pkg_frame, text="Remove",
                                         command=lambda name=pkg_name, version=pkg_version: remove_button_popup(name, version))
                 remove_button.grid(row=0, column=3, sticky="e", padx=5)
+                
+                summary = ttk.Label(pkg_frame, text=f"Author: {pkg['author']}", font=("Arial", 10), wraplength=400)
+                summary.grid(row=1, column=0, sticky="w", padx=20)
+                
+                summary = ttk.Label(pkg_frame, text=pkg["summary"], font=("Arial", 10), wraplength=400)
+                summary.grid(row=2, column=0, sticky="w", padx=20)
 
                 # Let the name and version columns expand to use available space
                 pkg_frame.columnconfigure(0, weight=1)

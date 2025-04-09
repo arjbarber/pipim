@@ -38,8 +38,7 @@ def get_module_info():
         "name": data["info"]["name"],
         "version": data["info"]["version"],
         "summary": data["info"]["summary"],
-        "author": data["info"]["author"],
-        "description": data["info"]["description"]
+        "author": data["info"]["author"]
     }
 
     return jsonify(package_info)
