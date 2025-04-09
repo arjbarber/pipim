@@ -23,6 +23,27 @@ def get_modules():
     
     return jsonify(modules)
 
+@app.route('/get_module_info', methods=['POST'])
+def get_module_info():
+    package_name = request.json.get('package_name')
+    if not package_name:
+        return jsonify({"error": "Package name is required"}), 400
+    
+    r = requests.get(f"https://pypi.org/pypi/{package_name}/json")
+
+    if r.status_code != 200:
+        return jsonify({"error": "Package not found"}), 404
+    data = r.json()
+    package_info = {
+        "name": data["info"]["name"],
+        "version": data["info"]["version"],
+        "summary": data["info"]["summary"],
+        "author": data["info"]["author"],
+        "description": data["info"]["description"]
+    }
+
+    return jsonify(package_info)
+
 @app.route('/install_package', methods=['POST'])
 def install_package():
     package_name = request.json.get('package_name')
