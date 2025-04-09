@@ -3,12 +3,13 @@ import subprocess
 from bs4 import BeautifulSoup
 import requests
 import webbrowser
+import platform
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return jsonify({"message": "Welcome to the Flask App!"})
+    return jsonify({"message": "yoooo!"})
     
 
 @app.route('/get_modules', methods=['GET'])
@@ -48,9 +49,14 @@ def uninstall_package():
     
     return jsonify({"message": f"Package {package_name} uninstalled successfully!"})
 
-@app.route('/install_python', methods=['POST'])
+@app.route('/install_python', methods=['GET'])
 def install_python():
     # implement later
+    print("started Install")
+    print(subprocess.run(["curl", "-o", "python-installer.exe", "https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe"]))
+    print("finished install")
+
+    return("yeah it works haha")
     ...
 
 @app.route('/search_for_packages', methods=['GET'])
