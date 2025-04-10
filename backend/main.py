@@ -3,9 +3,18 @@ import subprocess
 from bs4 import BeautifulSoup
 import requests
 import webbrowser
+import os
 import platform
 
 app = Flask(__name__)
+DOCS = {}
+
+def init():
+    with open(os.path.join('backend','documentations.csv'), 'r') as file:
+        for line in file:
+            name, url = line.strip().split(',')
+            DOCS[name] = url
+    print("Documentations loaded")
 
 @app.route('/')
 def home():
@@ -107,11 +116,16 @@ def package_documentation():
     package_name = request.json.get('package_name')
     if not package_name:
         return jsonify({"error": "Package name is required"}), 400
-
-    url = f"https://pypi.org/project/{package_name}/"
+    
+    if package_name in DOCS:
+        url = DOCS[package_name]
+    else:
+        url = f"https://pypi.org/project/{package_name}/"
+        # If the package is not in the local documentation, open the PyPI page
     webbrowser.open(url)
 
     return jsonify({"message": f"Opening documentation for {package_name}"})
 
 if __name__ == '__main__':
+    init()
     app.run(debug=True)
