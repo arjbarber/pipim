@@ -135,6 +135,9 @@ class PipimApp(tk.Tk):
                 summary = ttk.Label(pkg_frame, text=pkg["summary"], font=("Arial", 10), wraplength=400)
                 summary.grid(row=2, column=0, sticky="w", padx=20)
 
+                # Add a separator line
+                separator = ttk.Separator(pkg_frame, orient="horizontal")
+                separator.grid(row=3, column=0, columnspan=4, sticky="ew", pady=5)
 
                 # Let the name and version columns expand to use available space
                 pkg_frame.columnconfigure(0, weight=1)
@@ -163,6 +166,7 @@ class PipimApp(tk.Tk):
             popup.destroy()
 
         def remove_button_popup(package_name, package_version):
+
             default_bg = self.winfo_toplevel().cget("bg")
 
             popup = tk.Toplevel(self)
@@ -170,16 +174,9 @@ class PipimApp(tk.Tk):
             popup.geometry("300x150")
             popup.configure(bg=default_bg)
 
-            # Create the label
-            label = ttk.Label(
-                popup,
-                text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
-                font=("Arial", 10),
-                background=default_bg,
-                wraplength=260,  # Wrap text at ~260 pixels
-                justify="center"  # Optional: center-align the text
-            )
-            label.pack(pady=20, padx=10)
+            # Display popup content
+            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 10), background=default_bg)
+            label.pack(pady=20)
 
             # Create a frame to hold both buttons side by side
             button_frame = ttk.Frame(popup)
@@ -200,7 +197,6 @@ class PipimApp(tk.Tk):
                 command=popup.destroy
             )
             cancel_button.pack(side=tk.LEFT, padx=10)
-
 
 
         # Initial load of packages
@@ -314,37 +310,14 @@ class PipimApp(tk.Tk):
         popup.geometry("300x150")
         popup.configure(bg=default_bg)
         
-        # Create a frame to hold both buttons side by side
-        button_frame = ttk.Frame(popup)
-        button_frame.pack(pady=10)
-
-        def install_python():
-            r = requests.get(BACKEND_URL + "/install_python")
 
         # Display popup content
         label = ttk.Label(popup, text="Install Python", font=("Arial", 14), background=default_bg)
         label.pack(pady=20)
 
-        # Create and pack the button frame (inside popup!)
-        button_frame = ttk.Frame(popup)
-        button_frame.pack(pady=10)
-
-        # Install button
-        install_button = ttk.Button(
-            button_frame,
-            text="Install",
-            command=lambda: install_python()
-        )
-        install_button.pack(side=tk.LEFT, padx=10)
-
-        # Cancel button
-        cancel_button = ttk.Button(
-            button_frame,
-            text="Cancel",
-            command=popup.destroy
-        )
-        cancel_button.pack(side=tk.LEFT, padx=10)
-
+        # Close button for the popup
+        close_button = ttk.Button(popup, text="Close", command=popup.destroy)
+        close_button.pack(pady=10)
 
 # Run the application
 if __name__ == "__main__":
