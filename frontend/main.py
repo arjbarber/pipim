@@ -44,16 +44,18 @@ class PipimApp(tk.Tk):
         )
         install_python_button.pack(pady=10)
 
-    # Create the UI for the "View Installed Packages" tab
     def create_view_packages_ui(self, parent):
         title_label = ttk.Label(parent, text="View Installed Packages", font=("Arial", 16))
         title_label.pack(pady=10)
+
+        # Create a loading bar for feedback during refresh
+        self.loading_bar = ttk.Progressbar(parent, mode='indeterminate')
+        self.loading_bar.pack(fill="x", padx=10, pady=5)
 
         # Create a container for the canvas and scrollbar
         container = ttk.Frame(parent)
         container.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Get the background color from the top-level widget
         default_bg = parent.winfo_toplevel().cget("bg")
         canvas = tk.Canvas(container, borderwidth=0, bg=default_bg)
         canvas.pack(side="left", fill="both", expand=True)
@@ -69,13 +71,11 @@ class PipimApp(tk.Tk):
         # Update scroll region when the frame's size changes
         def on_frame_configure(event):
             canvas.configure(scrollregion=canvas.bbox("all"))
-
         scrollable_frame.bind("<Configure>", on_frame_configure)
 
         # Update the frame width to match the canvas width
         def on_canvas_configure(event):
             canvas.itemconfig(window_id, width=event.width)
-
         canvas.bind("<Configure>", on_canvas_configure)
 
         # Enable mouse wheel scrolling
@@ -83,74 +83,101 @@ class PipimApp(tk.Tk):
         canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # For Linux
         canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # For Linux
 
-        def refresh_packages():
-            # Clear current content
+        def display_row(pkg):
+            pkg_name = pkg["name"]
+            pkg_version = pkg["version"]
+
+            pkg_frame = ttk.Frame(scrollable_frame)
+            pkg_frame.pack(fill="x", pady=5, padx=20)
+
+            pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
+            pkg_label.grid(row=0, column=0, sticky="w")
+
+            pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
+            pkg_version_label.grid(row=0, column=1, sticky="e", padx=20)
+
+            doc_button = ttk.Button(pkg_frame, text="Documentation",
+                                    command=lambda name=pkg_name: open_documentation(name))
+            doc_button.grid(row=0, column=2, sticky="e", padx=5)
+
+            remove_button = ttk.Button(pkg_frame, text="Remove",
+                                    command=lambda name=pkg_name, version=pkg_version: remove_button_popup(name, version))
+            remove_button.grid(row=0, column=3, sticky="e", padx=5)
+
+            author_label = ttk.Label(pkg_frame, text=f"Author: {pkg.get('author', '')}", font=("Arial", 10), wraplength=400)
+            author_label.grid(row=1, column=0, sticky="w", padx=20)
+
+            summary_label = ttk.Label(pkg_frame, text=pkg.get("summary", ""), font=("Arial", 10), wraplength=400)
+            summary_label.grid(row=2, column=0, sticky="w", padx=20)
+
+            separator = ttk.Separator(pkg_frame, orient="horizontal")
+            separator.grid(row=3, column=0, columnspan=4, sticky="ew", pady=5)
+
+            pkg_frame.columnconfigure(0, weight=1)
+            pkg_frame.columnconfigure(1, weight=1)
+
+        def update_ui(packages):
+            for pkg in packages:
+                display_row(pkg)
+            self.loading_bar.stop()
+
+        def show_no_modules():
             for widget in scrollable_frame.winfo_children():
                 widget.destroy()
+            pkg_frame = ttk.Frame(scrollable_frame)
+            pkg_frame.pack(fill="x", pady=5, padx=20)
+            pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
+            pkg_label.pack(side="left", padx=100)
+            self.loading_bar.stop()
 
-            r = requests.get(BACKEND_URL + "get_modules")
-            if r.status_code == 200:
-                data = r.json()  # Parse the JSON response
-            else:
-                pkg_frame = ttk.Frame(scrollable_frame)
-                pkg_frame.pack(fill="x", pady=5, padx=20)
-                pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
-                pkg_label.pack(side="left", padx=100)
-                return
+        def refresh_packages():
+            for widget in scrollable_frame.winfo_children():
+                widget.destroy()
+            self.loading_bar.start()
 
-            def display_row(pkg):
-                pkg_name = pkg["name"]
-                pkg_version = pkg["version"]
-                r = requests.post(BACKEND_URL + "get_module_info", json={"package_name": pkg_name})
-                if r.status_code != 200:
-                    raise Exception("Failed to fetch package info")
-                pkg_info = r.json()
-                pkg["summary"] = pkg_info["summary"]
-                pkg["author"] = pkg_info["author"]
+            def load():
+                try:
+                    r = requests.get(BACKEND_URL + "get_modules")
+                except Exception:
+                    parent.after(0, show_no_modules)
+                    return
 
-                pkg_frame = ttk.Frame(scrollable_frame)
-                pkg_frame.pack(fill="x", pady=5, padx=20)
+                if r.status_code == 200:
+                    data = r.json()
+                else:
+                    parent.after(0, show_no_modules)
+                    return
 
-                # Package name
-                pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
-                pkg_label.grid(row=0, column=0, sticky="w")
+                if not data:
+                    parent.after(0, show_no_modules)
+                    return
 
-                # Version aligned next to the package name
-                pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
-                pkg_version_label.grid(row=0, column=1, sticky="e", padx=20)
+                import concurrent.futures
 
-                # Documentation button on the right side
-                doc_button = ttk.Button(pkg_frame, text="Documentation",
-                                        command=lambda name=pkg_name: open_documentation(name))
-                doc_button.grid(row=0, column=2, sticky="e", padx=5)
+                def fetch_package_info(pkg):
+                    pkg_name = pkg["name"]
+                    try:
+                        r_info = requests.post(BACKEND_URL + "get_module_info", json={"package_name": pkg_name})
+                        if r_info.status_code != 200:
+                            pkg["summary"] = "Error fetching info"
+                            pkg["author"] = ""
+                        else:
+                            pkg_info = r_info.json()
+                            pkg["summary"] = pkg_info.get("summary", "")
+                            pkg["author"] = pkg_info.get("author", "")
+                    except Exception as e:
+                        pkg["summary"] = f"Error: {e}"
+                        pkg["author"] = ""
+                    return pkg
 
-                # Remove button on the far right
-                remove_button = ttk.Button(pkg_frame, text="Remove",
-                                        command=lambda name=pkg_name, version=pkg_version: remove_button_popup(name, version))
-                remove_button.grid(row=0, column=3, sticky="e", padx=5)
-                
-                summary = ttk.Label(pkg_frame, text=f"Author: {pkg['author']}", font=("Arial", 10), wraplength=400)
-                summary.grid(row=1, column=0, sticky="w", padx=20)
-                
-                summary = ttk.Label(pkg_frame, text=pkg["summary"], font=("Arial", 10), wraplength=400)
-                summary.grid(row=2, column=0, sticky="w", padx=20)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    packages = list(executor.map(fetch_package_info, data))
 
-                # Add a separator line
-                separator = ttk.Separator(pkg_frame, orient="horizontal")
-                separator.grid(row=3, column=0, columnspan=4, sticky="ew", pady=5)
+                parent.after(0, lambda: update_ui(packages))
 
-                # Let the name and version columns expand to use available space
-                pkg_frame.columnconfigure(0, weight=1)
-                pkg_frame.columnconfigure(1, weight=1)
+            threading.Thread(target=load, daemon=True).start()
 
-
-            # Create a frame for each package and use grid for alignment
-            array = []
-            for pkg in data:
-                array.append(threading.Thread(target=display_row(pkg),args=(pkg,)))
-                array[-1].start()
-
-        # Bind the refresh_packages function to the tab being selected
+        # Bind refresh_packages to the tab becoming visible
         parent.bind("<Visibility>", lambda event: refresh_packages())
 
         def open_documentation(name):
@@ -161,43 +188,29 @@ class PipimApp(tk.Tk):
         def remove_package(name, popup):
             r = requests.post(BACKEND_URL + "uninstall_package", json={"package_name": name})
             if r.status_code == 200:
-                refresh_packages()  # Refresh the package list after removal
-
+                refresh_packages()  # Refresh list after removal
             popup.destroy()
 
         def remove_button_popup(package_name, package_version):
-
             default_bg = self.winfo_toplevel().cget("bg")
-
             popup = tk.Toplevel(self)
             popup.title("Remove Package")
             popup.geometry("300x150")
             popup.configure(bg=default_bg)
 
-            # Display popup content
-            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?", font=("Arial", 10), background=default_bg)
+            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
+                            font=("Arial", 10), background=default_bg)
             label.pack(pady=20)
 
-            # Create a frame to hold both buttons side by side
             button_frame = ttk.Frame(popup)
             button_frame.pack(pady=10)
 
-            # Remove button
-            remove_button = ttk.Button(
-                button_frame,
-                text="Remove",
-                command=lambda name=package_name: remove_package(name, popup)
-            )
+            remove_button = ttk.Button(button_frame, text="Remove",
+                                    command=lambda name=package_name: remove_package(name, popup))
             remove_button.pack(side=tk.LEFT, padx=10)
 
-            # Cancel button
-            cancel_button = ttk.Button(
-                button_frame,
-                text="Cancel",
-                command=popup.destroy
-            )
+            cancel_button = ttk.Button(button_frame, text="Cancel", command=popup.destroy)
             cancel_button.pack(side=tk.LEFT, padx=10)
-
 
         # Initial load of packages
         refresh_packages()

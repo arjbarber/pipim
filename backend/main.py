@@ -48,8 +48,7 @@ def get_module_info():
         "name": data["info"]["name"],
         "version": data["info"]["version"],
         "summary": data["info"]["summary"],
-        "author": data["info"]["author"],
-        "requirements": "".join([pkg for pkg in data["info"]["requires_dist"]] if data["info"]["requires_dist"] else [])
+        "author": data["info"]["author"]
     }
 
     return jsonify(package_info)
