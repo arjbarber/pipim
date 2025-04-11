@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import requests
 import threading
+import httpx
+import asyncio
 
 BACKEND_URL = 'http://127.0.0.1:5000/'
 
@@ -117,7 +119,6 @@ class PipimApp(tk.Tk):
             pkg_frame.columnconfigure(1, weight=1)
 
         def update_ui(packages):
-            print("this is running twice")
             for pkg in packages:
                 display_row(pkg)
             self.loading_bar.stop()
@@ -186,11 +187,22 @@ class PipimApp(tk.Tk):
             if r.status_code != 200:
                 raise Exception("Failed to fetch documentation")
 
-        def remove_package(name, popup):
-            r = requests.post(BACKEND_URL + "uninstall_package", json={"package_name": name})
-            if r.status_code == 200:
-                refresh_packages()  # Refresh list after removal
+        async def remove_package(name, popup):
+            data = {"package_name": name}
+            async with httpx.AsyncClient() as client:
+                try:
+                    r = await client.post(BACKEND_URL + "uninstall_package", json=data)
+                    if r.status_code == 200:
+                        print("hopelly removed")
+                    else:
+                        print("another oopsie happened")
+                except httpx.HTTPError as e:
+                    print("oops")
+            refresh_packages()
             popup.destroy()
+        
+        def run_async_remove_package(p, popup):
+            threading.Thread(target=lambda: asyncio.run(remove_package(p, popup))).start()
 
         def remove_button_popup(package_name, package_version):
             default_bg = self.winfo_toplevel().cget("bg")
@@ -207,7 +219,7 @@ class PipimApp(tk.Tk):
             button_frame.pack(pady=10)
 
             remove_button = ttk.Button(button_frame, text="Remove",
-                                    command=lambda name=package_name: remove_package(name, popup))
+                                    command=lambda name=package_name: run_async_remove_package(name, popup))
             remove_button.pack(side=tk.LEFT, padx=10)
 
             cancel_button = ttk.Button(button_frame, text="Cancel", command=popup.destroy)
@@ -258,20 +270,27 @@ class PipimApp(tk.Tk):
             )
             log_label.pack(anchor="w", pady=2)
 
-        # Function to handle package installation
-        def install_package(name: str) -> None:
-            data = {"package_name": name}
-            r = requests.post(BACKEND_URL + 'install_package', json=data)
-            if r.status_code == 200:
-                response_data = r.json()
-                update_log(response_data["message"], success=True)
-            else:
-                response_data = r.json()
-                update_log(response_data.get("error", "An error occurred"), success=False)
-
         # Button to trigger package installation
-        install_button = ttk.Button(parent, text="Install", command=lambda: install_package(package_entry.get()))
+        install_button = ttk.Button(parent, text="Install", command=lambda: run_async_install(package_entry.get()))
         install_button.pack(pady=10)
+
+        # Function to handle package installation
+        async def install_package(name: str):
+            data = {"package_name": name}
+            async with httpx.AsyncClient() as client:
+                try:
+                    r = await client.post(BACKEND_URL + 'install_package', json=data)
+                    if r.status_code == 200:
+                        response_data = r.json()
+                        update_log(response_data["message"], success=True)
+                    else:
+                        response_data = r.json()
+                        update_log(response_data.get("error", "An error occurred"), success=False)
+                except httpx.HTTPError as e:
+                    update_log(f"Network error: {str(e)}", success=False)
+                    
+        def run_async_install(p):
+            threading.Thread(target=lambda: asyncio.run(install_package(p))).start()
 
     # Create the UI for the "Search For Package" tab
     def create_search_package_ui(self, parent):
