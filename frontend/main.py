@@ -117,6 +117,7 @@ class PipimApp(tk.Tk):
             pkg_frame.columnconfigure(1, weight=1)
 
         def update_ui(packages):
+            print("this is running twice")
             for pkg in packages:
                 display_row(pkg)
             self.loading_bar.stop()
@@ -213,7 +214,7 @@ class PipimApp(tk.Tk):
             cancel_button.pack(side=tk.LEFT, padx=10)
 
         # Initial load of packages
-        refresh_packages()
+        #refresh_packages()
 
     # Create the UI for the "Install Package" tab
     def create_install_package_ui(self, parent):
