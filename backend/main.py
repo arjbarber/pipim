@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import requests
 import webbrowser
 import os
-import platform
+import json
 
 app = Flask(__name__)
 DOCS = {}
@@ -30,8 +30,22 @@ def get_modules():
     modules = [line.split()[0] for line in items[2:]]
     versions = [line.split()[1] for line in items[2:]]
     modules = [{"name": name, "version": version} for name, version in zip(modules, versions)]
+    saved_modules = []
+    if os.path.exists('packages.json'):
+        with open('packages.json', 'r') as f:
+            saved_modules = json.load(f)
     
-    return jsonify(modules)
+    if len(saved_modules) == len(modules):
+        for i in range(len(saved_modules)):
+            if saved_modules[i]['name'] != modules[i]['name']:
+                print("Modules are different")
+                return jsonify({"modules": modules, "saved": False})
+            
+        print("Modules are the same")
+        return jsonify({"modules": saved_modules, "saved": True})
+    else:
+        print("Modules are different")
+        return jsonify({"modules": modules, "saved": False})
 
 @app.route('/get_module_info', methods=['POST'])
 def get_module_info():
@@ -78,6 +92,18 @@ def uninstall_package():
     
     return jsonify({"message": f"Package {package_name} uninstalled successfully!"})
 
+@app.route('/save_packages_locally', methods=['POST'])
+def save_packages_locally():
+    packages = request.json.get('packages')
+    if not packages:
+        return jsonify({"error": "No packages provided"}), 400
+    
+    with open('packages.json', 'w') as f:
+        json.dump(packages, f,indent=2)
+    print("Packages saved locally")
+    
+    return jsonify({"message": "Packages saved locally!"})
+
 @app.route('/install_python', methods=['GET'])
 def install_python():
     # implement later
@@ -85,7 +111,7 @@ def install_python():
     print(subprocess.run(["curl", "-o", "python-installer.exe", "https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe"]))
     print("finished install")
 
-    return("yeah it works haha")
+    return  jsonify({"message": "yeah it works haha"}), 200
     ...
 
 @app.route('/search_for_packages', methods=['GET'])

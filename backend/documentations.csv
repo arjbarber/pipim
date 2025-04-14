@@ -11,7 +11,7 @@ twine,https://twine.readthedocs.io/en/latest/
 virtualenv,https://virtualenv.pypa.io/en/latest/
 tox,https://tox.readthedocs.io/en/latest/
 cookiecutter,https://cookiecutter.readthedocs.io/en/latest/
-flask,https://flask.palletsprojects.com/en/stable/
+Flask,https://flask.palletsprojects.com/en/stable/
 seaborn,https://seaborn.pydata.org/
 jupyter,https://jupyter.org/documentation
 plotly,https://plotly.com/python/

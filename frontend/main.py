@@ -7,6 +7,8 @@ import asyncio
 
 BACKEND_URL = 'http://127.0.0.1:5000/'
 
+all_packages = []
+
 # Main application class
 class PipimApp(tk.Tk):
     def __init__(self):
@@ -140,12 +142,16 @@ class PipimApp(tk.Tk):
             def load():
                 try:
                     r = requests.get(BACKEND_URL + "get_modules")
-                except Exception:
+                except Exception as e:
+                    print(f"Error fetching modules: {e}")
                     parent.after(0, show_no_modules)
                     return
 
                 if r.status_code == 200:
                     data = r.json()
+                    data = data.get("modules", [])
+                    all_packages.clear()
+                    all_packages.extend(data)
                 else:
                     parent.after(0, show_no_modules)
                     return
@@ -157,20 +163,23 @@ class PipimApp(tk.Tk):
                 import concurrent.futures
 
                 def fetch_package_info(pkg):
-                    pkg_name = pkg["name"]
-                    try:
-                        r_info = requests.post(BACKEND_URL + "get_module_info", json={"package_name": pkg_name})
-                        if r_info.status_code != 200:
-                            pkg["summary"] = "Error fetching info"
+                    if pkg.get("summary", 0) == 0:
+                        pkg_name = pkg["name"]
+                        try:
+                            r_info = requests.post(BACKEND_URL + "get_module_info", json={"package_name": pkg_name})
+                            if r_info.status_code != 200:
+                                pkg["summary"] = "Error fetching info"
+                                pkg["author"] = ""
+                            else:
+                                pkg_info = r_info.json()
+                                pkg["summary"] = pkg_info.get("summary", "")
+                                pkg["author"] = pkg_info.get("author", "")
+                        except Exception as e:
+                            pkg["summary"] = f"Error: {e}"
                             pkg["author"] = ""
-                        else:
-                            pkg_info = r_info.json()
-                            pkg["summary"] = pkg_info.get("summary", "")
-                            pkg["author"] = pkg_info.get("author", "")
-                    except Exception as e:
-                        pkg["summary"] = f"Error: {e}"
-                        pkg["author"] = ""
-                    return pkg
+                        return pkg
+                    else:
+                        return pkg
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                     packages = list(executor.map(fetch_package_info, data))
@@ -356,3 +365,10 @@ class PipimApp(tk.Tk):
 if __name__ == "__main__":
     app = PipimApp()
     app.mainloop()
+
+    r = requests.post(BACKEND_URL + "save_packages_locally", json={"packages": all_packages})
+    if r.status_code == 200:
+        print("Packages saved locally")
+    else:
+        print(f"Failed to save packages locally: {r.status_code}")
+    
