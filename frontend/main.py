@@ -10,7 +10,7 @@ BACKEND_URL = 'http://127.0.0.1:5000/'
 all_packages = []
 
 # Main application class
-class PipimApp(tk.Tk):
+class PipimFrontend(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("pipim")  # Set the window title
@@ -363,7 +363,7 @@ class PipimApp(tk.Tk):
 
 # Run the application
 if __name__ == "__main__":
-    app = PipimApp()
+    app = PipimFrontend()
     app.mainloop()
 
     r = requests.post(BACKEND_URL + "save_packages_locally", json={"packages": all_packages})
