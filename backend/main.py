@@ -124,20 +124,9 @@ class PipimBackend:
                 return jsonify({"error": "Missing 'q' parameter"}), 400
 
             search_url = f"https://pypi.org/search/?q={query}"
-            headers = {"User-Agent": "Mozilla/5.0"}
+            webbrowser.open(search_url)
 
-            response = requests.get(search_url, headers=headers)
-            if response.status_code != 200:
-                return jsonify({"error": "Failed to fetch data from PyPI"}), 500
-
-            soup = BeautifulSoup(response.text, 'html.parser')
-            results = []
-
-            print(soup)
-            listOfPackages = soup.find_all("ul", attrs={"class": "unstyled"})
-            print(listOfPackages)
-
-            return jsonify(results)
+            return jsonify({"message": f"Opening Search for {query}"})
 
         @self.app.route('/package_documentation', methods=['POST'])
         def package_documentation():
