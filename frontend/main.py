@@ -49,7 +49,7 @@ class PipimFrontend(tk.Tk):
         install_python_button.pack(pady=10)
 
     def create_view_packages_ui(self, parent):
-        title_label = ttk.Label(parent, text="View Installed Packages", font=("Arial", 16))
+        title_label = ttk.Label(parent, text="View Installed Packages", font=("Monaco", 16))
         title_label.pack(pady=10)
 
         # Create a loading bar for feedback during refresh
@@ -94,10 +94,10 @@ class PipimFrontend(tk.Tk):
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
 
-            pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Arial", 12))
+            pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Monaco", 12))
             pkg_label.grid(row=0, column=0, sticky="w")
 
-            pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Arial", 12))
+            pkg_version_label = ttk.Label(pkg_frame, text=f"Version: {pkg_version}", font=("Monaco", 12))
             pkg_version_label.grid(row=0, column=1, sticky="e", padx=20)
 
             doc_button = ttk.Button(pkg_frame, text="Documentation",
@@ -108,10 +108,10 @@ class PipimFrontend(tk.Tk):
                                     command=lambda name=pkg_name, version=pkg_version: remove_button_popup(name, version))
             remove_button.grid(row=0, column=3, sticky="e", padx=5)
 
-            author_label = ttk.Label(pkg_frame, text=f"Author: {pkg.get('author', '')}", font=("Arial", 10), wraplength=400)
+            author_label = ttk.Label(pkg_frame, text=f"Author: {pkg.get('author', '')}", font=("Monaco", 10), wraplength=400)
             author_label.grid(row=1, column=0, sticky="w", padx=20)
 
-            summary_label = ttk.Label(pkg_frame, text=pkg.get("summary", ""), font=("Arial", 10), wraplength=400)
+            summary_label = ttk.Label(pkg_frame, text=pkg.get("summary", ""), font=("Monaco", 10), wraplength=400)
             summary_label.grid(row=2, column=0, sticky="w", padx=20)
 
             separator = ttk.Separator(pkg_frame, orient="horizontal")
@@ -130,7 +130,7 @@ class PipimFrontend(tk.Tk):
                 widget.destroy()
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
-            pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Arial", 12))
+            pkg_label = ttk.Label(pkg_frame, text="No modules installed.", font=("Monaco", 12))
             pkg_label.pack(side="left", padx=100)
             self.loading_bar.stop()
 
@@ -217,13 +217,20 @@ class PipimFrontend(tk.Tk):
             default_bg = self.winfo_toplevel().cget("bg")
             popup = tk.Toplevel(self)
             popup.title("Remove Package")
-            popup.geometry("300x150")
-            popup.configure(bg=default_bg)
+            popup.geometry("300x220")
+            popup.configure(bg="#dcdad5")
 
 
             #WRAP THIS PLEAASE
-            label = ttk.Label(popup, text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
-                            font=("Arial", 10), background=default_bg)
+            label = ttk.Label(
+                popup,
+                text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
+                font=("Monaco", 10),
+                background="#dcdad5",
+                wraplength=250,
+                anchor="center",
+                justify="center"
+            )
             label.pack(pady=20)
 
             button_frame = ttk.Frame(popup)
@@ -241,7 +248,7 @@ class PipimFrontend(tk.Tk):
 
     # Create the UI for the "Install Package" tab
     def create_install_package_ui(self, parent):
-        title_label = ttk.Label(parent, text="Install Package", font=("Arial", 16))
+        title_label = ttk.Label(parent, text="Install Package", font=("Monaco", 16))
         title_label.pack(pady=10)
 
         # Input field for package name
@@ -276,7 +283,7 @@ class PipimFrontend(tk.Tk):
             log_label = ttk.Label(
                 scrollable_log_frame,
                 text=message,
-                font=("Arial", 12),
+                font=("Monaco", 12),
                 foreground="green" if success else "red"
             )
             log_label.pack(anchor="w", pady=2)
@@ -326,7 +333,7 @@ class PipimFrontend(tk.Tk):
                 result_label.config(text=f"Error: {str(e)}")
 
         # UI Components
-        title_label = ttk.Label(parent, text="Search For Package", font=("Arial", 16))
+        title_label = ttk.Label(parent, text="Search For Package", font=("Monaco", 16))
         title_label.pack(pady=10)
 
         package_label = ttk.Label(parent, text="Package Name:")
@@ -351,22 +358,46 @@ class PipimFrontend(tk.Tk):
 
         popup = tk.Toplevel(self)
         popup.title("Install Python")
-        popup.geometry("300x150")
+        popup.geometry("300x200")
         popup.configure(bg=default_bg)
-        
 
         # Display popup content
-        label = ttk.Label(popup, text="Install Python", font=("Arial", 14), background=default_bg)
+        label = ttk.Label(popup, text="Install Python", font=("Monaco", 14), background=default_bg)
         label.pack(pady=20)
 
+        # Create a loading bar
+        loading_bar = ttk.Progressbar(popup, mode='indeterminate')
+        loading_bar.pack(fill="x", padx=10, pady=10)
 
-        #MAKE IT SO THAT THIS THING HAS A LOADING BAR
+        # Function to handle Python installation asynchronously
+        async def install_python():
+            loading_bar.start()
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(BACKEND_URL + "install_python")
+                    if response.status_code == 200:
+                        print("Python installed successfully")
+                    else:
+                        print("Failed to install Python")
+            except Exception as e:
+                print(f"Error: {e}")
+            finally:
+                loading_bar.stop()
 
-        install_button = ttk.Button(popup, text = "yoo", command=lambda : requests.get(BACKEND_URL + "install_python"))
-        install_button.pack(pady=10)
-        # Close button for the popup
-        close_button = ttk.Button(popup, text="Close", command=popup.destroy)
-        close_button.pack(pady=10)
+        def run_async_install():
+            threading.Thread(target=lambda: asyncio.run(install_python())).start()
+
+        # Create a frame for buttons
+        button_frame = ttk.Frame(popup)
+        button_frame.pack(pady=10)
+
+        # Install button
+        install_button = ttk.Button(button_frame, text="Install Python", command=run_async_install)
+        install_button.pack(side=tk.LEFT, padx=10)
+
+        # Close button
+        close_button = ttk.Button(button_frame, text="Close", command=popup.destroy)
+        close_button.pack(side=tk.LEFT, padx=10)
 
 # Run the application
 if __name__ == "__main__":
