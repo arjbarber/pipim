@@ -328,7 +328,7 @@ class PipimFrontend(tk.Tk):
                     for pkg in packages:
                         result_text.insert(tk.END, f"{pkg['name']} ({pkg['version']}): {pkg['description']}\n\n")
                 else:
-                    result_text.insert(tk.END, "No packages found.")
+                    result_text.insert(tk.END, f"Redirecting to browser find {query}.")
             except Exception as e:
                 result_label.config(text=f"Error: {str(e)}")
 

@@ -1,10 +1,11 @@
 from flask import Flask, jsonify, request
 import subprocess
-from bs4 import BeautifulSoup
 import requests
 import webbrowser
 import os
 import json
+import urllib.request
+import tempfile
 
 class PipimBackend:
     def __init__(self):
@@ -27,7 +28,7 @@ class PipimBackend:
 
         @self.app.route('/get_modules', methods=['GET'])
         def get_modules():
-            pip_list = subprocess.run(['pip', 'list'], capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            pip_list = subprocess.run(['pip', 'list'], capture_output=True, text=True)
             if pip_list.returncode != 0:
                 return jsonify({"error": "Failed to get pip list"}), 500
             items = pip_list.stdout.splitlines()
@@ -110,10 +111,28 @@ class PipimBackend:
 
         @self.app.route('/install_python', methods=['GET'])
         def install_python():
-            # implement later
-            print("started Install")
-            print(subprocess.run(["curl", "-o", "python-installer.exe", "https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe"]))
-            print("finished install")
+            PYTHON_URL = "https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe"
+
+            def download_python_installer(url, save_path):
+                print("Downloading Python installer...")
+                urllib.request.urlretrieve(url, save_path)
+                print("Download complete.")
+
+            def install_python(installer_path):
+                print("Starting silent installation...")
+                subprocess.run([
+                    installer_path,
+                    "/quiet",
+                    "InstallAllUsers=1",
+                    "PrependPath=1",
+                    "Include_test=0"
+                ], check=True)
+                print("Python installed successfully.")
+
+            temp_dir = tempfile.gettempdir()
+            installer_path = os.path.join(temp_dir, "python_installer.exe")
+            download_python_installer(PYTHON_URL, installer_path)
+            install_python(installer_path)
 
             return jsonify({"message": "yeah it works haha"}), 200
 
@@ -151,3 +170,7 @@ class PipimBackend:
 # from backend.main import PipimApp
 # app_instance = PipimApp()
 # app_instance.run(debug=True)
+
+if __name__ == "__main__":
+    backend = PipimBackend()
+    backend.run(debug=True, use_reloader=False)

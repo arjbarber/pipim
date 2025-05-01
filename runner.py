@@ -1,4 +1,4 @@
-from frontend.main import PipimApp as PipimFrontend
+from frontend.main import PipimFrontend as PipimFrontend
 from backend.main  import PipimBackend as PipimBackend
 from threading import Thread
 import time
