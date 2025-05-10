@@ -21,10 +21,7 @@ if __name__ == "__main__":
 
     time.sleep(0.2)
 
-    frontend_thread = Thread(target=run_frontend)
-    frontend_thread.start()
+    run_frontend()
 
     backend_thread.join()
-    frontend_thread.join()
-    
-    
+
