@@ -17,10 +17,11 @@ def run_frontend():
     os._exit(0)
 
 if __name__ == "__main__":
-    if sys.argv[1] == "-b":
-        run_backend()
-    elif sys.argv[1] == "-f":
-        run_frontend()
+    if len(sys.argv) > 1 and sys.argv[1] in ["-b", "-f"]:
+        if sys.argv[1] == "-b":
+            run_backend()
+        elif sys.argv[1] == "-f":
+            run_frontend()
     else:
         backend_thread = Thread(target=run_backend)
         backend_thread.start()

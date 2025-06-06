@@ -312,44 +312,165 @@ class PipimFrontend(tk.Tk):
 
     # Create the UI for the "Search For Package" tab
     def create_search_package_ui(self, parent):
-        def search_package():
-            query = package_entry.get()
-            if not query:
-                result_label.config(text="Please enter a package name.")
-                return
-
-            try:
-                response = requests.get(BACKEND_URL + "search_for_packages", params={"q": query})
-                response.raise_for_status()
-                packages = response.json()
-
-                result_text.delete("1.0", tk.END)
-                if isinstance(packages, list) and packages:
-                    for pkg in packages:
-                        result_text.insert(tk.END, f"{pkg['name']} ({pkg['version']}): {pkg['description']}\n\n")
-                else:
-                    result_text.insert(tk.END, f"Redirecting to browser find {query}.")
-            except Exception as e:
-                result_label.config(text=f"Error: {str(e)}")
-
-        # UI Components
         title_label = ttk.Label(parent, text="Search For Package", font=("Monaco", 16))
         title_label.pack(pady=10)
 
+        # Input field for package name
         package_label = ttk.Label(parent, text="Package Name:")
         package_label.pack(pady=5)
-
-        package_entry = ttk.Entry(parent, width=40)
+        package_entry = ttk.Entry(parent)
         package_entry.pack(pady=5)
 
-        install_button = ttk.Button(parent, text="Search", command=search_package)
-        install_button.pack(pady=10)
+        # Create a loading bar for feedback during search
+        self.loading_bar = ttk.Progressbar(parent, mode='indeterminate')
+        self.loading_bar.pack(fill="x", padx=10, pady=5)
 
-        result_label = ttk.Label(parent, text="", foreground="red")
-        result_label.pack()
+        # Create a container for the canvas and scrollbar
+        container = ttk.Frame(parent)
+        container.pack(fill="both", expand=True, padx=10, pady=10)
 
-        result_text = tk.Text(parent, height=15, width=60, wrap="word")
-        result_text.pack(pady=10)
+        default_bg = parent.winfo_toplevel().cget("bg")
+        canvas = tk.Canvas(container, borderwidth=0, bg=default_bg)
+        canvas.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Create a scrollable frame inside the canvas
+        scrollable_frame = ttk.Frame(canvas)
+        window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        # Update scroll region when the frame's size changes
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        scrollable_frame.bind("<Configure>", on_frame_configure)
+
+        # Update the frame width to match the canvas width
+        def on_canvas_configure(event):
+            canvas.itemconfig(window_id, width=event.width)
+        canvas.bind("<Configure>", on_canvas_configure)
+
+        # Enable mouse wheel scrolling
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # For Linux
+        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # For Linux
+
+        def display_row(pkg):
+            pkg_name = pkg["name"]
+            pkg_summary = pkg.get("summary", "No summary available")
+
+            pkg_frame = ttk.Frame(scrollable_frame)
+            pkg_frame.pack(fill="x", pady=5, padx=20)
+
+            pkg_label = ttk.Label(pkg_frame, text=pkg_name, font=("Monaco", 12))
+            pkg_label.grid(row=0, column=0, sticky="w")
+
+            summary_label = ttk.Label(pkg_frame, text=pkg_summary, font=("Monaco", 10), wraplength=400)
+            summary_label.grid(row=1, column=0, sticky="w", padx=20)
+
+            install_button = ttk.Button(pkg_frame, text="Install", command=lambda name=pkg_name: run_async_install(name))
+            install_button.grid(row=0, column=1, sticky="e", padx=5)
+
+            doc_button = ttk.Button(pkg_frame, text="Documentation", command=lambda name=pkg_name: open_documentation(name))
+            doc_button.grid(row=0, column=2, sticky="e", padx=5)
+
+            separator = ttk.Separator(pkg_frame, orient="horizontal")
+            separator.grid(row=2, column=0, columnspan=4, sticky="ew", pady=5)
+
+            pkg_frame.columnconfigure(0, weight=1)
+
+        def update_ui(packages):
+            for pkg in packages:
+                display_row(pkg)
+            self.loading_bar.stop()
+
+        def show_no_results():
+            for widget in scrollable_frame.winfo_children():
+                widget.destroy()
+            pkg_frame = ttk.Frame(scrollable_frame)
+            pkg_frame.pack(fill="x", pady=5, padx=20)
+            pkg_label = ttk.Label(pkg_frame, text="No packages found.", font=("Monaco", 12))
+            pkg_label.pack(side="left", padx=100)
+            self.loading_bar.stop()
+
+        def search_package():
+            query = package_entry.get()
+            if not query:
+                show_no_results()
+                return
+
+            for widget in scrollable_frame.winfo_children():
+                widget.destroy()
+            self.loading_bar.start()
+
+            def load():
+                try:
+                    response = requests.get(BACKEND_URL + "search_for_packages", params={"q": query})
+                    response.raise_for_status()
+                    data = response.json()
+                    packages = data.get("packages", [])
+                except Exception as e:
+                    print(f"Error fetching packages: {e}")
+                    parent.after(0, show_no_results)
+                    return
+
+                if not packages:
+                    parent.after(0, show_no_results)
+                    return
+
+                parent.after(0, lambda: update_ui(packages))
+
+            threading.Thread(target=load, daemon=True).start()
+
+        # Search button
+        search_button = ttk.Button(parent, text="Search", command=search_package)
+        search_button.pack(pady=10)
+
+        def run_async_install(name):
+            threading.Thread(target=lambda: asyncio.run(install_package(name))).start()
+
+        async def install_package(name):
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(BACKEND_URL + "install_package", json={"package_name": name})
+                    if response.status_code == 200:
+                        show_install_success_popup(name)
+                    else:
+                        print(f"Failed to install package {name}: {response.status_code}")
+            except Exception as e:
+                print(f"Error installing package {name}: {e}")
+
+        def show_install_success_popup(package_name):
+
+            default_bg = self.winfo_toplevel().cget("bg")
+            popup = tk.Toplevel(self)
+            popup.geometry("300x220")
+            popup.configure(bg="#dcdad5")
+            popup.title("Package Installed")
+            popup.geometry("300x150")
+            label = ttk.Label(
+                popup,
+                text=f"Package '{package_name}' was installed successfully!",
+                font=("Monaco", 10),
+                background="#dcdad5",
+                wraplength=250,
+                anchor="center",
+                justify="center"
+            )
+            label.pack(pady=20)
+
+            close_button = ttk.Button(popup, text="Close", command=popup.destroy)
+            close_button.pack(pady=10)
+
+        def open_documentation(name):
+            try:
+                response = requests.post(BACKEND_URL + "package_documentation", json={"package_name": name})
+                response.raise_for_status()
+                documentation_url = response.json().get("documentation_url", "No URL provided")
+                print(f"Documentation for {name}: {documentation_url}")
+            except Exception as e:
+                print(f"Error fetching documentation for {name}: {e}")
 
     # Open a popup window for installing Python
     def open_install_python_popup(self):
@@ -409,4 +530,3 @@ if __name__ == "__main__":
         print("Packages saved locally")
     else:
         print(f"Failed to save packages locally: {r.status_code}")
-    

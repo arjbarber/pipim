@@ -6,7 +6,6 @@ import os
 import json
 import urllib.request
 import tempfile
-from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -159,6 +158,7 @@ class PipimBackend:
                 options.add_argument('--no-sandbox')
                 options.add_argument('--disable-dev-shm-usage')
                 options.add_argument("user-agent=Mozilla/5.0")
+                options.add_argument('--headless=new')  # <-- use new headless mode
 
                 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
                 driver.get(search_url)
