@@ -6,6 +6,14 @@ import os
 import json
 import urllib.request
 import tempfile
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
 
 class PipimBackend:
     def __init__(self):
@@ -138,14 +146,44 @@ class PipimBackend:
 
         @self.app.route('/search_for_packages', methods=['GET'])
         def search_for_packages():
+            import time  # Make sure this is included
+
             query = request.args.get('q')
             if not query:
                 return jsonify({"error": "Missing 'q' parameter"}), 400
 
             search_url = f"https://pypi.org/search/?q={query}"
-            webbrowser.open(search_url)
 
-            return jsonify({"message": f"Opening Search for {query}"})
+            try:
+                options = webdriver.ChromeOptions()
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument("user-agent=Mozilla/5.0")
+
+                driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+                driver.get(search_url)
+
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".package-snippet"))
+                )
+                time.sleep(2)
+
+                results = []
+                packages = driver.find_elements(By.CSS_SELECTOR, '.package-snippet')
+                for package in packages:
+                    try:
+                        name = package.find_element(By.CSS_SELECTOR, '.package-snippet__name').text.strip()
+                        summary = package.find_element(By.CSS_SELECTOR, '.package-snippet__description').text.strip()
+                        results.append({"name": name, "summary": summary})
+                    except Exception as e:
+                        print(f"Skipping one package: {e}")
+                        continue
+
+                driver.quit()
+                return jsonify({"packages": results})
+
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
 
         @self.app.route('/package_documentation', methods=['POST'])
         def package_documentation():
