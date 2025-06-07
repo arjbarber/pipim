@@ -13,6 +13,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import sys
 
 class PipimBackend:
     def __init__(self):
@@ -22,11 +23,13 @@ class PipimBackend:
         self.setup_routes()
 
     def init_docs(self):
-        with open(os.path.join('backend', 'documentations.csv'), 'r') as file:
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath('.'))  # safe for both dev and .exe
+        docs_path = os.path.join(base_path, 'backend', 'documentations.csv')
+
+        with open(docs_path, 'r') as file:
             for line in file:
                 name, url = line.strip().split(',')
                 self.DOCS[name] = url
-        print("Documentations loaded")
 
     def setup_routes(self):
         @self.app.route('/')
@@ -145,7 +148,6 @@ class PipimBackend:
 
         @self.app.route('/search_for_packages', methods=['GET'])
         def search_for_packages():
-            import time  # Make sure this is included
 
             query = request.args.get('q')
             if not query:
@@ -201,7 +203,7 @@ class PipimBackend:
             return jsonify({"message": f"Opening documentation for {package_name}"})
 
     def run(self, **kwargs):
-        self.app.run(**kwargs)
+        self.app.run(host="127.0.0.1", port=5050, **kwargs)
 
 
 # To use this class in another file:
@@ -211,4 +213,4 @@ class PipimBackend:
 
 if __name__ == "__main__":
     backend = PipimBackend()
-    backend.run(debug=True, use_reloader=False)
+    backend.run(debug=False, use_reloader=False)
