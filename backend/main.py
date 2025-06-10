@@ -15,18 +15,18 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import sys
 from waitress import serve
+from platform import system
 
 class PipimBackend:
     def __init__(self):
         self.app = Flask(__name__)
         self.DOCS = {}
+        self.base_path = getattr(sys, '_MEIPASS', os.path.abspath('.'))
         self.init_docs()
         self.setup_routes()
 
     def init_docs(self):
-        base_path = getattr(sys, '_MEIPASS', os.path.abspath('.'))  # safe for both dev and .exe
-        docs_path = os.path.join(base_path, 'backend', 'documentations.csv')
-
+        docs_path = os.path.join(self.base_path, 'backend', 'documentations.csv')
         with open(docs_path, 'r') as file:
             for line in file:
                 name, url = line.strip().split(',')
@@ -39,16 +39,18 @@ class PipimBackend:
 
         @self.app.route('/get_modules', methods=['GET'])
         def get_modules():
-            pip_list = subprocess.run(['pip', 'list'], capture_output=True, text=True)
+            pip_list = subprocess.run([sys.executable, '-m', 'pip', 'list'], capture_output=True, text=True)
             if pip_list.returncode != 0:
                 return jsonify({"error": "Failed to get pip list"}), 500
             items = pip_list.stdout.splitlines()
             modules = [line.split()[0] for line in items[2:]]
             versions = [line.split()[1] for line in items[2:]]
             modules = [{"name": name, "version": version} for name, version in zip(modules, versions)]
+
+            json_path = os.path.join(self.base_path, 'packages.json')
             saved_modules = []
-            if os.path.exists('packages.json'):
-                with open('packages.json', 'r') as f:
+            if os.path.exists(json_path):
+                with open(json_path, 'r') as f:
                     saved_modules = json.load(f)
 
             if len(saved_modules) == len(modules):
@@ -70,7 +72,6 @@ class PipimBackend:
                 return jsonify({"error": "Package name is required"}), 400
 
             r = requests.get(f"https://pypi.org/pypi/{package_name}/json")
-
             if r.status_code != 200:
                 return jsonify({"error": "Package not found"}), 404
             data = r.json()
@@ -80,7 +81,6 @@ class PipimBackend:
                 "summary": data["info"]["summary"],
                 "author": data["info"]["author"]
             }
-
             return jsonify(package_info)
 
         @self.app.route('/install_package', methods=['POST'])
@@ -89,7 +89,7 @@ class PipimBackend:
             if not package_name:
                 return jsonify({"error": "Package name is required"}), 400
 
-            result = subprocess.run(['pip', 'install', package_name], capture_output=True, text=True)
+            result = subprocess.run([sys.executable, '-m', 'pip', 'install', package_name], capture_output=True, text=True)
             if result.returncode != 0:
                 return jsonify({"error": result.stderr}), 500
 
@@ -101,8 +101,7 @@ class PipimBackend:
             if not package_name:
                 return jsonify({"error": "Package name is required"}), 400
 
-            result = subprocess.run(['pip', 'uninstall', '-y', package_name], capture_output=True, text=True)
-            print(result)
+            result = subprocess.run([sys.executable, '-m', 'pip', 'uninstall', '-y', package_name], capture_output=True, text=True)
             if result.returncode != 0:
                 return jsonify({"error": result.stderr}), 500
 
@@ -114,42 +113,51 @@ class PipimBackend:
             if not packages:
                 return jsonify({"error": "No packages provided"}), 400
 
-            with open('packages.json', 'w') as f:
+            json_path = os.path.join(self.base_path, 'packages.json')
+            with open(json_path, 'w') as f:
                 json.dump(packages, f, indent=2)
-            print("Packages saved locally")
 
             return jsonify({"message": "Packages saved locally!"})
 
         @self.app.route('/install_python', methods=['GET'])
         def install_python():
-            PYTHON_URL = "https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe"
 
-            def download_python_installer(url, save_path):
-                print("Downloading Python installer...")
-                urllib.request.urlretrieve(url, save_path)
-                print("Download complete.")
-
-            def install_python(installer_path):
-                print("Starting silent installation...")
-                subprocess.run([
-                    installer_path,
+            if system() == "Windows":
+                PYTHON_URL = "https://www.python.org/ftp/python/3.12.2/python-3.12.2-amd64.exe"
+                install_cmd = [
+                    "python_installer.exe",
                     "/quiet",
                     "InstallAllUsers=1",
                     "PrependPath=1",
                     "Include_test=0"
-                ], check=True)
-                print("Python installed successfully.")
+                ]
+            elif system() == "Darwin":
+                PYTHON_URL = "https://www.python.org/ftp/python/3.12.2/python-3.12.2-macos11.pkg"
+                install_cmd = [
+                    "sudo",
+                    "installer",
+                    "-pkg",
+                    "python_installer.pkg",
+                    "-target",
+                    "/"
+                ]
+            else:
+                return jsonify({"error": "Unsupported OS"}), 400
 
             temp_dir = tempfile.gettempdir()
-            installer_path = os.path.join(temp_dir, "python_installer.exe")
-            download_python_installer(PYTHON_URL, installer_path)
-            install_python(installer_path)
+            installer_filename = "python_installer.exe" if system() == "Windows" else "python_installer.pkg"
+            installer_path = os.path.join(temp_dir, installer_filename)
 
-            return jsonify({"message": "yeah it works haha"}), 200
+            urllib.request.urlretrieve(PYTHON_URL, installer_path)
+
+            try:
+                subprocess.run(install_cmd, check=True)
+                return jsonify({"message": "Python installation triggered."}), 200
+            except subprocess.CalledProcessError as e:
+                return jsonify({"error": f"Installation failed: {str(e)}"}), 500
 
         @self.app.route('/search_for_packages', methods=['GET'])
         def search_for_packages():
-
             query = request.args.get('q')
             if not query:
                 return jsonify({"error": "Missing 'q' parameter"}), 400
@@ -161,7 +169,7 @@ class PipimBackend:
                 options.add_argument('--no-sandbox')
                 options.add_argument('--disable-dev-shm-usage')
                 options.add_argument("user-agent=Mozilla/5.0")
-                options.add_argument('--headless=new')  # <-- use new headless mode
+                options.add_argument('--headless=new')
 
                 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
                 driver.get(search_url)
@@ -179,7 +187,7 @@ class PipimBackend:
                         summary = package.find_element(By.CSS_SELECTOR, '.package-snippet__description').text.strip()
                         results.append({"name": name, "summary": summary})
                     except Exception as e:
-                        print(f"Skipping one package: {e}")
+                        print(f"Error processing package {query}: {e}")
                         continue
 
                 driver.quit()
@@ -198,19 +206,12 @@ class PipimBackend:
                 url = self.DOCS[package_name]
             else:
                 url = f"https://pypi.org/project/{package_name}/"
-                # If the package is not in the local documentation, open the PyPI page
-            webbrowser.open(url)
 
+            webbrowser.open(url)
             return jsonify({"message": f"Opening documentation for {package_name}"})
 
     def run(self, **kwargs):
         serve(self.app, host='127.0.0.1', port=5050, threads=10)
-
-
-# To use this class in another file:
-# from backend.main import PipimApp
-# app_instance = PipimApp()
-# app_instance.run(debug=True)
 
 if __name__ == "__main__":
     backend = PipimBackend()
