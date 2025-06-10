@@ -14,6 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import sys
+from waitress import serve
 
 class PipimBackend:
     def __init__(self):
@@ -203,7 +204,7 @@ class PipimBackend:
             return jsonify({"message": f"Opening documentation for {package_name}"})
 
     def run(self, **kwargs):
-        self.app.run(host="127.0.0.1", port=5050, **kwargs)
+        serve(self.app, host='127.0.0.1', port=5050, threads=10)
 
 
 # To use this class in another file:
@@ -213,4 +214,4 @@ class PipimBackend:
 
 if __name__ == "__main__":
     backend = PipimBackend()
-    backend.run(debug=False, use_reloader=False)
+    backend.run()
