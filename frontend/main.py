@@ -52,6 +52,12 @@ class PipimFrontend(tk.Tk):
         title_label = ttk.Label(parent, text="View Installed Packages", font=("Monaco", 16))
         title_label.pack(pady=10)
 
+        # Search bar for filtering packages
+        search_label = ttk.Label(parent, text="Search Installed Packages:")
+        search_label.pack(pady=5)
+        search_entry = ttk.Entry(parent)
+        search_entry.pack(pady=5)
+
         # Create a loading bar for feedback during refresh
         self.loading_bar = ttk.Progressbar(parent, mode='indeterminate')
         self.loading_bar.pack(fill="x", padx=10, pady=5)
@@ -188,8 +194,20 @@ class PipimFrontend(tk.Tk):
 
             threading.Thread(target=load, daemon=True).start()
 
+        def filter_packages():
+            query = search_entry.get().lower()
+            filtered_packages = [pkg for pkg in all_packages if query in pkg["name"].lower()]
+            for widget in scrollable_frame.winfo_children():
+                widget.destroy()
+            if filtered_packages:
+                update_ui(filtered_packages)
+            else:
+                show_no_modules()
+
         # Bind refresh_packages to the tab becoming visible
         parent.bind("<Visibility>", lambda event: refresh_packages())
+
+        search_entry.bind("<KeyRelease>", lambda event: filter_packages())
 
         def open_documentation(name):
             r = requests.post(BACKEND_URL + "package_documentation", json={"package_name": name})
