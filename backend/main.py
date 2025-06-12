@@ -71,15 +71,28 @@ class PipimBackend:
             if not package_name:
                 return jsonify({"error": "Package name is required"}), 400
 
+            json_path = os.path.join(os.path.dirname(__file__), 'packages.json')
+            if os.path.exists(json_path):
+                with open(json_path, 'r') as f:
+                    cached_packages = json.load(f)
+                    print(cached_packages.index(package_name))
+                    if package_name in cached_packages and cached_packages[cached_packages.index(package_name)].get('summary') != "Error fetching info":
+                        return jsonify(cached_packages[package_name])
+
             r = requests.get(f"https://pypi.org/pypi/{package_name}/json")
             if r.status_code != 200:
                 return jsonify({"error": "Package not found"}), 404
             data = r.json()
+            requires_dist = data["info"].get("requires_dist", [])
             package_info = {
                 "name": data["info"]["name"],
                 "version": data["info"]["version"],
                 "summary": data["info"]["summary"],
-                "author": data["info"]["author"]
+                "author": data["info"]["author"],
+                "dependencies": [
+                    dep.split()[0].split('>')[0].split('<')[0].split('=')[0].split("[")[0].split(';')[0].split('~')[0]
+                    for dep in requires_dist if "extra ==" not in dep and "python_version" not in dep
+                ] if requires_dist else []
             }
             return jsonify(package_info)
 
@@ -211,6 +224,7 @@ class PipimBackend:
             return jsonify({"message": f"Opening documentation for {package_name}"})
 
     def run(self, **kwargs):
+        #self.app.run(port=5050, host='127.0.0.1', debug=False, use_reloader=False)
         serve(self.app, host='127.0.0.1', port=5050, threads=10)
 
 if __name__ == "__main__":

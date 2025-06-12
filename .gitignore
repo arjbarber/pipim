@@ -176,3 +176,10 @@ cython_debug/
 # project stuff
 packages.json
 pyinstaller.md
+Testing/
+
+# Testing Files
+Testing/test.py
+Testing/userError.py
+Testing/nathansAttemptAtFrontend.py
+Testing/helpme.py

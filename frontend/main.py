@@ -134,8 +134,12 @@ class PipimFrontend(tk.Tk):
             summary_label = ttk.Label(pkg_frame, text=pkg.get("summary", ""), font=("Monaco", 10), wraplength=400)
             summary_label.grid(row=2, column=0, sticky="w", padx=20)
 
+            dependencies = pkg.get("dependencies", "")
+            dependency_label = ttk.Label(pkg_frame, text=f"Dependencies: {", ".join(dependencies)}" if len(dependencies) > 0 else "", font=("Monaco", 10), wraplength=400)
+            dependency_label.grid(row=3, column=0, sticky="w", padx=20)
+
             separator = ttk.Separator(pkg_frame, orient="horizontal")
-            separator.grid(row=3, column=0, columnspan=4, sticky="ew", pady=5)
+            separator.grid(row=4, column=0, columnspan=4, sticky="ew", pady=5)
 
             pkg_frame.columnconfigure(0, weight=1)
             pkg_frame.columnconfigure(1, weight=1)
@@ -190,10 +194,12 @@ class PipimFrontend(tk.Tk):
                             if r_info.status_code != 200:
                                 pkg["summary"] = "Error fetching info"
                                 pkg["author"] = ""
+                                pkg["dependencies"] = []
                             else:
                                 pkg_info = r_info.json()
                                 pkg["summary"] = pkg_info.get("summary", "")
                                 pkg["author"] = pkg_info.get("author", "")
+                                pkg["dependencies"] = pkg_info.get("dependencies", [])
                         except Exception as e:
                             pkg["summary"] = f"Error: {e}"
                             pkg["author"] = ""
@@ -249,29 +255,72 @@ class PipimFrontend(tk.Tk):
             default_bg = self.winfo_toplevel().cget("bg")
             popup = tk.Toplevel(self)
             popup.title("Remove Package")
-            popup.geometry("300x220")
+            popup.geometry("300x300")
             popup.configure(bg="#dcdad5")
 
-
-            #WRAP THIS PLEAASE
+            # Label for confirmation message
             label = ttk.Label(
+            popup,
+            text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
+            font=("Monaco", 10),
+            background="#dcdad5",
+            wraplength=250,
+            anchor="center",
+            justify="center"
+            )
+            label.pack(pady=20)
+
+            # Fetch and display dependent packages
+            dependent_packages = [
+            pkg["name"] for pkg in all_packages if package_name.lower() in [dep.lower() for dep in pkg.get("dependencies", [])]
+            ]
+            if dependent_packages:
+                dependencies_label = ttk.Label(
                 popup,
-                text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
+                text="Warning: Removing this package may affect the following dependencies:",
                 font=("Monaco", 10),
                 background="#dcdad5",
                 wraplength=250,
                 anchor="center",
                 justify="center"
-            )
-            label.pack(pady=20)
+                )
+                dependencies_label.pack(pady=10)
 
+                dependencies_list_label = ttk.Label(
+                    popup,
+                    text=", ".join(dependent_packages),
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                dependencies_list_label.pack(pady=10)
+            else:
+                no_dependencies_label = ttk.Label(
+                    popup,
+                    text="No dependent packages found. You can safely remove this package.",
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                no_dependencies_label.pack(pady=10)
+
+            # Button frame
             button_frame = ttk.Frame(popup)
             button_frame.pack(pady=10)
 
-            remove_button = ttk.Button(button_frame, text="Remove",
-                                    command=lambda name=package_name: run_async_remove_package(name, popup))
+            # Remove button
+            remove_button = ttk.Button(
+            button_frame,
+            text="Remove",
+            command=lambda name=package_name: run_async_remove_package(name, popup)
+            )
             remove_button.pack(side=tk.LEFT, padx=10)
 
+            # Cancel button
             cancel_button = ttk.Button(button_frame, text="Cancel", command=popup.destroy)
             cancel_button.pack(side=tk.LEFT, padx=10)
 
