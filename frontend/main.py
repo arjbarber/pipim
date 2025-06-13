@@ -27,17 +27,14 @@ class PipimFrontend(tk.Tk):
 
         # Create frames for each tab
         self.view_packages_frame = ttk.Frame(notebook)
-        self.install_package_frame = ttk.Frame(notebook)
         self.search_package_frame = ttk.Frame(notebook)
 
         # Add frames to the notebook
         notebook.add(self.view_packages_frame, text="View Installed Packages")
-        notebook.add(self.install_package_frame, text="Install Package")
         notebook.add(self.search_package_frame, text="Search For Packages")
 
         # Initialize the UI for each tab
         self.create_view_packages_ui(self.view_packages_frame)
-        self.create_install_package_ui(self.install_package_frame)
         self.create_search_package_ui(self.search_package_frame)
 
         # Add a button to install Python
@@ -327,71 +324,7 @@ class PipimFrontend(tk.Tk):
 
         # Initial load of packages
         #refresh_packages()
-
-    # Create the UI for the "Install Package" tab
-    def create_install_package_ui(self, parent):
-        title_label = ttk.Label(parent, text="Install Package", font=("Monaco", 16))
-        title_label.pack(pady=10)
-
-        # Input field for package name
-        package_label = ttk.Label(parent, text="Package Name:")
-        package_label.pack(pady=5)
-        package_entry = ttk.Entry(parent)
-        package_entry.pack(pady=5)
-
-        # Create a frame to display the log dynamically
-        log_frame = ttk.Frame(parent)
-        log_frame.pack(fill="both", expand=True, pady=10)
-
-        # Create a canvas and a scrollbar for scrolling
-        canvas = tk.Canvas(log_frame)
-        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=canvas.yview)
-        scrollable_log_frame = ttk.Frame(canvas)
-
-        # Configure the canvas to update the scroll region
-        scrollable_log_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        canvas.create_window((0, 0), window=scrollable_log_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Pack the canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Function to dynamically update the log
-        def update_log(message: str, success: bool):
-            log_label = ttk.Label(
-                scrollable_log_frame,
-                text=message,
-                font=("Monaco", 12),
-                foreground="green" if success else "red"
-            )
-            log_label.pack(anchor="w", pady=2)
-
-        # Button to trigger package installation
-        install_button = ttk.Button(parent, text="Install", command=lambda: run_async_install(package_entry.get()))
-        install_button.pack(pady=10)
-
-        # Function to handle package installation
-        async def install_package(name: str):
-            data = {"package_name": name}
-            async with httpx.AsyncClient() as client:
-                try:
-                    r = await client.post(BACKEND_URL + 'install_package', json=data)
-                    if r.status_code == 200:
-                        response_data = r.json()
-                        update_log(response_data["message"], success=True)
-                    else:
-                        response_data = r.json()
-                        update_log(response_data.get("error", "An error occurred"), success=False)
-                except httpx.HTTPError as e:
-                    update_log(f"Network error: {str(e)}", success=False)
-                    
-        def run_async_install(p):
-            threading.Thread(target=lambda: asyncio.run(install_package(p))).start()
-
+    
     # Create the UI for the "Search For Package" tab
     def create_search_package_ui(self, parent):
         title_label = ttk.Label(parent, text="Search For Package", font=("Monaco", 16))
