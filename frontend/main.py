@@ -135,8 +135,9 @@ class PipimFrontend(tk.Tk):
             summary_label.grid(row=2, column=0, sticky="w", padx=20)
 
             dependencies = pkg.get("dependencies", "")
-            dependency_label = ttk.Label(pkg_frame, text=f"Dependencies: {", ".join(dependencies)}" if len(dependencies) > 0 else "", font=("Monaco", 10), wraplength=400)
-            dependency_label.grid(row=3, column=0, sticky="w", padx=20)
+            if len(dependencies) > 0:
+                dependency_label = ttk.Label(pkg_frame, text=f"Dependencies: {", ".join(dependencies)}", font=("Monaco", 10), wraplength=400)
+                dependency_label.grid(row=3, column=0, sticky="w", padx=20)
 
             separator = ttk.Separator(pkg_frame, orient="horizontal")
             separator.grid(row=4, column=0, columnspan=4, sticky="ew", pady=5)
@@ -440,6 +441,8 @@ class PipimFrontend(tk.Tk):
         def display_row(pkg):
             pkg_name = pkg["name"]
             pkg_summary = pkg.get("summary", "No summary available")
+            if pkg_summary == "None":
+                pkg_summary = "No summary available"
 
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
