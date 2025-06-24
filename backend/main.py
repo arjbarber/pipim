@@ -75,7 +75,6 @@ class PipimBackend:
             if os.path.exists(json_path):
                 with open(json_path, 'r') as f:
                     cached_packages = json.load(f)
-                    print(cached_packages.index(package_name))
                     if package_name in cached_packages and cached_packages[cached_packages.index(package_name)].get('summary') != "Error fetching info":
                         return jsonify(cached_packages[package_name])
 

@@ -465,18 +465,53 @@ class PipimFrontend(tk.Tk):
             popup.geometry("300x220")
             popup.configure(bg="#dcdad5")
             popup.title("Package Installed")
-            popup.geometry("300x150")
-            label = ttk.Label(
-                popup,
-                text=f"Package '{package_name}' was installed successfully!",
-                font=("Monaco", 10),
-                background="#dcdad5",
-                wraplength=250,
-                anchor="center",
-                justify="center"
-            )
-            label.pack(pady=20)
+            popup.geometry("300x200")
 
+            # Main label for the installed package
+            label = ttk.Label(
+            popup,
+            text=f"Package '{package_name}' was installed successfully!",
+            font=("Monaco", 10),
+            background="#dcdad5",
+            wraplength=250,
+            anchor="center",
+            justify="center"
+            )
+            label.pack(pady=10)
+
+            r = requests.post(BACKEND_URL + "get_module_info", json={"package_name": package_name})
+            if r.status_code != 200:
+                print(f"Error fetching package info for {package_name}")
+                dependencies = None
+            else:
+                package_info = r.json()
+                dependencies = package_info.get("dependencies", [])
+
+            # Show dependencies if any were installed
+            if dependencies:
+                dependencies_label = ttk.Label(
+                    popup,
+                    text="The following dependencies were also installed:",
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                dependencies_label.pack(pady=5)
+
+                dependencies_list_label = ttk.Label(
+                    popup,
+                    text=", ".join(dependencies),
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                dependencies_list_label.pack(pady=5)
+
+            # Close button
             close_button = ttk.Button(popup, text="Close", command=popup.destroy)
             close_button.pack(pady=10)
 
