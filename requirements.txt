@@ -3,3 +3,4 @@ requests
 httpx
 selenium
 webdriver-manager
+waitress

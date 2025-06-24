@@ -27,17 +27,14 @@ class PipimFrontend(tk.Tk):
 
         # Create frames for each tab
         self.view_packages_frame = ttk.Frame(notebook)
-        self.install_package_frame = ttk.Frame(notebook)
         self.search_package_frame = ttk.Frame(notebook)
 
         # Add frames to the notebook
         notebook.add(self.view_packages_frame, text="View Installed Packages")
-        notebook.add(self.install_package_frame, text="Install Package")
         notebook.add(self.search_package_frame, text="Search For Packages")
 
         # Initialize the UI for each tab
         self.create_view_packages_ui(self.view_packages_frame)
-        self.create_install_package_ui(self.install_package_frame)
         self.create_search_package_ui(self.search_package_frame)
 
         # Add a button to install Python
@@ -134,8 +131,13 @@ class PipimFrontend(tk.Tk):
             summary_label = ttk.Label(pkg_frame, text=pkg.get("summary", ""), font=("Monaco", 10), wraplength=400)
             summary_label.grid(row=2, column=0, sticky="w", padx=20)
 
+            dependencies = pkg.get("dependencies", "")
+            if len(dependencies) > 0:
+                dependency_label = ttk.Label(pkg_frame, text=f"Dependencies: {", ".join(dependencies)}", font=("Monaco", 10), wraplength=400)
+                dependency_label.grid(row=3, column=0, sticky="w", padx=20)
+
             separator = ttk.Separator(pkg_frame, orient="horizontal")
-            separator.grid(row=3, column=0, columnspan=4, sticky="ew", pady=5)
+            separator.grid(row=4, column=0, columnspan=4, sticky="ew", pady=5)
 
             pkg_frame.columnconfigure(0, weight=1)
             pkg_frame.columnconfigure(1, weight=1)
@@ -190,10 +192,12 @@ class PipimFrontend(tk.Tk):
                             if r_info.status_code != 200:
                                 pkg["summary"] = "Error fetching info"
                                 pkg["author"] = ""
+                                pkg["dependencies"] = []
                             else:
                                 pkg_info = r_info.json()
                                 pkg["summary"] = pkg_info.get("summary", "")
                                 pkg["author"] = pkg_info.get("author", "")
+                                pkg["dependencies"] = pkg_info.get("dependencies", [])
                         except Exception as e:
                             pkg["summary"] = f"Error: {e}"
                             pkg["author"] = ""
@@ -249,99 +253,78 @@ class PipimFrontend(tk.Tk):
             default_bg = self.winfo_toplevel().cget("bg")
             popup = tk.Toplevel(self)
             popup.title("Remove Package")
-            popup.geometry("300x220")
+            popup.geometry("300x300")
             popup.configure(bg="#dcdad5")
 
-
-            #WRAP THIS PLEAASE
+            # Label for confirmation message
             label = ttk.Label(
+            popup,
+            text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
+            font=("Monaco", 10),
+            background="#dcdad5",
+            wraplength=250,
+            anchor="center",
+            justify="center"
+            )
+            label.pack(pady=20)
+
+            # Fetch and display dependent packages
+            dependent_packages = [
+            pkg["name"] for pkg in all_packages if package_name.lower() in [dep.lower() for dep in pkg.get("dependencies", [])]
+            ]
+            if dependent_packages:
+                dependencies_label = ttk.Label(
                 popup,
-                text=f"You are attempting to remove package {package_name} with version {package_version}.\nDo you wish to proceed?",
+                text="Warning: Removing this package may affect the following dependencies:",
                 font=("Monaco", 10),
                 background="#dcdad5",
                 wraplength=250,
                 anchor="center",
                 justify="center"
-            )
-            label.pack(pady=20)
+                )
+                dependencies_label.pack(pady=10)
 
+                dependencies_list_label = ttk.Label(
+                    popup,
+                    text=", ".join(dependent_packages),
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                dependencies_list_label.pack(pady=10)
+            else:
+                no_dependencies_label = ttk.Label(
+                    popup,
+                    text="No dependent packages found. You can safely remove this package.",
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                no_dependencies_label.pack(pady=10)
+
+            # Button frame
             button_frame = ttk.Frame(popup)
             button_frame.pack(pady=10)
 
-            remove_button = ttk.Button(button_frame, text="Remove",
-                                    command=lambda name=package_name: run_async_remove_package(name, popup))
+            # Remove button
+            remove_button = ttk.Button(
+            button_frame,
+            text="Remove",
+            command=lambda name=package_name: run_async_remove_package(name, popup)
+            )
             remove_button.pack(side=tk.LEFT, padx=10)
 
+            # Cancel button
             cancel_button = ttk.Button(button_frame, text="Cancel", command=popup.destroy)
             cancel_button.pack(side=tk.LEFT, padx=10)
 
         # Initial load of packages
         #refresh_packages()
-
-    # Create the UI for the "Install Package" tab
-    def create_install_package_ui(self, parent):
-        title_label = ttk.Label(parent, text="Install Package", font=("Monaco", 16))
-        title_label.pack(pady=10)
-
-        # Input field for package name
-        package_label = ttk.Label(parent, text="Package Name:")
-        package_label.pack(pady=5)
-        package_entry = ttk.Entry(parent)
-        package_entry.pack(pady=5)
-
-        # Create a frame to display the log dynamically
-        log_frame = ttk.Frame(parent)
-        log_frame.pack(fill="both", expand=True, pady=10)
-
-        # Create a canvas and a scrollbar for scrolling
-        canvas = tk.Canvas(log_frame)
-        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=canvas.yview)
-        scrollable_log_frame = ttk.Frame(canvas)
-
-        # Configure the canvas to update the scroll region
-        scrollable_log_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        canvas.create_window((0, 0), window=scrollable_log_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Pack the canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Function to dynamically update the log
-        def update_log(message: str, success: bool):
-            log_label = ttk.Label(
-                scrollable_log_frame,
-                text=message,
-                font=("Monaco", 12),
-                foreground="green" if success else "red"
-            )
-            log_label.pack(anchor="w", pady=2)
-
-        # Button to trigger package installation
-        install_button = ttk.Button(parent, text="Install", command=lambda: run_async_install(package_entry.get()))
-        install_button.pack(pady=10)
-
-        # Function to handle package installation
-        async def install_package(name: str):
-            data = {"package_name": name}
-            async with httpx.AsyncClient() as client:
-                try:
-                    r = await client.post(BACKEND_URL + 'install_package', json=data)
-                    if r.status_code == 200:
-                        response_data = r.json()
-                        update_log(response_data["message"], success=True)
-                    else:
-                        response_data = r.json()
-                        update_log(response_data.get("error", "An error occurred"), success=False)
-                except httpx.HTTPError as e:
-                    update_log(f"Network error: {str(e)}", success=False)
-                    
-        def run_async_install(p):
-            threading.Thread(target=lambda: asyncio.run(install_package(p))).start()
-
+    
     # Create the UI for the "Search For Package" tab
     def create_search_package_ui(self, parent):
         title_label = ttk.Label(parent, text="Search For Package", font=("Monaco", 16))
@@ -391,6 +374,8 @@ class PipimFrontend(tk.Tk):
         def display_row(pkg):
             pkg_name = pkg["name"]
             pkg_summary = pkg.get("summary", "No summary available")
+            if pkg_summary == "None":
+                pkg_summary = "No summary available"
 
             pkg_frame = ttk.Frame(scrollable_frame)
             pkg_frame.pack(fill="x", pady=5, padx=20)
@@ -480,18 +465,53 @@ class PipimFrontend(tk.Tk):
             popup.geometry("300x220")
             popup.configure(bg="#dcdad5")
             popup.title("Package Installed")
-            popup.geometry("300x150")
-            label = ttk.Label(
-                popup,
-                text=f"Package '{package_name}' was installed successfully!",
-                font=("Monaco", 10),
-                background="#dcdad5",
-                wraplength=250,
-                anchor="center",
-                justify="center"
-            )
-            label.pack(pady=20)
+            popup.geometry("300x200")
 
+            # Main label for the installed package
+            label = ttk.Label(
+            popup,
+            text=f"Package '{package_name}' was installed successfully!",
+            font=("Monaco", 10),
+            background="#dcdad5",
+            wraplength=250,
+            anchor="center",
+            justify="center"
+            )
+            label.pack(pady=10)
+
+            r = requests.post(BACKEND_URL + "get_module_info", json={"package_name": package_name})
+            if r.status_code != 200:
+                print(f"Error fetching package info for {package_name}")
+                dependencies = None
+            else:
+                package_info = r.json()
+                dependencies = package_info.get("dependencies", [])
+
+            # Show dependencies if any were installed
+            if dependencies:
+                dependencies_label = ttk.Label(
+                    popup,
+                    text="The following dependencies were also installed:",
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                dependencies_label.pack(pady=5)
+
+                dependencies_list_label = ttk.Label(
+                    popup,
+                    text=", ".join(dependencies),
+                    font=("Monaco", 10),
+                    background="#dcdad5",
+                    wraplength=250,
+                    anchor="center",
+                    justify="center"
+                )
+                dependencies_list_label.pack(pady=5)
+
+            # Close button
             close_button = ttk.Button(popup, text="Close", command=popup.destroy)
             close_button.pack(pady=10)
 
